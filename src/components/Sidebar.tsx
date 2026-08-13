@@ -1,15 +1,20 @@
 import React from 'react';
 import { Activity, LayoutDashboard, Users, Calendar, MessageSquare, PhoneCall, FileText, Star, Settings } from 'lucide-react';
 
-export function Sidebar() {
+interface SidebarProps {
+  activeView: string;
+  setActiveView: (view: string) => void;
+}
+
+export function Sidebar({ activeView, setActiveView }: SidebarProps) {
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Command Center', active: true },
-    { icon: Users, label: 'Patients', active: false },
-    { icon: Calendar, label: 'Schedule', active: false },
-    { icon: MessageSquare, label: 'Messages', active: false },
-    { icon: PhoneCall, label: 'Call Logs', active: false },
-    { icon: FileText, label: 'Claims', active: false },
-    { icon: Star, label: 'Reputation', active: false },
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Command Center' },
+    { id: 'patients', icon: Users, label: 'Patients' },
+    { id: 'schedule', icon: Calendar, label: 'Schedule' },
+    { id: 'messages', icon: MessageSquare, label: 'Messages' },
+    { id: 'calls', icon: PhoneCall, label: 'Call Logs' },
+    { id: 'claims', icon: FileText, label: 'Claims' },
+    { id: 'reputation', icon: Star, label: 'Reputation' },
   ];
 
   return (
@@ -22,11 +27,12 @@ export function Sidebar() {
       </div>
       
       <nav className="flex-1 py-6 flex flex-col space-y-2 px-3">
-        {menuItems.map((item, index) => (
+        {menuItems.map((item) => (
           <button
-            key={index}
+            key={item.id}
+            onClick={() => setActiveView(item.id)}
             className={`flex items-center px-3 py-2.5 rounded-lg transition-colors group ${
-              item.active 
+              activeView === item.id 
                 ? 'bg-blue-500/10 text-blue-400' 
                 : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
             }`}
