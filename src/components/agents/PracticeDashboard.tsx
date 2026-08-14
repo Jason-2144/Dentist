@@ -2,6 +2,12 @@ import React from 'react';
 import { AgentCard } from '../AgentCard';
 import { BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
 
+// NOTE: Revenue / chairs occupied / avg wait time are live PMS + ops data —
+// none of the 8 AI products built produce this. It needs a direct PMS API
+// integration (Dentrix/Curve/OpenDental) or manual entry, which is separate
+// work from the Appwrite wiring done for the other 7 cards. Left as mock
+// data intentionally until that PMS integration exists. See
+// APPWRITE_SCHEMA.md "Gaps" section.
 export function PracticeDashboard() {
   return (
     <AgentCard title="Practice Dashboard" icon={BarChart3} accentColor="#10B981" isLive={true}>

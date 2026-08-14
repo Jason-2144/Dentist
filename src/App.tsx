@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { client } from './lib/appwrite';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { Bottombar } from './components/Bottombar';
@@ -12,6 +13,15 @@ import { ReputationView } from './components/views/ReputationView';
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
+
+  useEffect(() => {
+    // Verifies the Appwrite connection is reachable on app load — check the
+    // browser console for the result. A failure here means every agent card
+    // will silently fall back to its empty/zero state.
+    client.ping()
+      .then(() => console.log('[Appwrite] ping OK — connected to', client.config.endpoint))
+      .catch((err) => console.error('[Appwrite] ping failed:', err));
+  }, []);
 
   const renderView = () => {
     switch (activeView) {
