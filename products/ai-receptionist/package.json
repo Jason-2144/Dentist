@@ -1,0 +1,16 @@
+{
+  "name": "ai-receptionist-phone-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Twilio <-> OpenAI Realtime API bridge for the AI Receptionist product",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-ws": "^5.0.2",
+    "twilio": "^5.2.2",
+    "ws": "^8.17.0"
+  }
+}

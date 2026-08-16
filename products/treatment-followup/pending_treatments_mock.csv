@@ -1,0 +1,6 @@
+patient_id,name,phone,treatment,quoted_price,recommended_date,follow_up_count,status
+P011,Meera Pillai,+919810000011,Filling,3000,2026-05-10,0,pending
+P012,Arjun Rao,+919810000012,Root Canal,12000,2026-04-22,1,pending
+P013,Kavya Menon,+919810000013,Crown,15000,2026-06-01,0,pending
+P014,Suresh Nair,+919810000014,Whitening,5000,2026-03-15,2,pending
+P015,Pooja Desai,+919810000015,Filling,3000,2026-05-28,0,pending

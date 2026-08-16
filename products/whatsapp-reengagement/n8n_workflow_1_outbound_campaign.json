@@ -1,0 +1,124 @@
+{
+  "name": "1. WhatsApp Re-Engagement — Outbound Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weeksInterval": 1, "triggerAtDay": [1], "triggerAtHour": 10 }
+          ]
+        }
+      },
+      "id": "trigger-weekly",
+      "name": "Weekly Trigger (Mon 10am)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1200, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "filePath": "/data/patients_mock.csv",
+        "options": {}
+      },
+      "id": "read-csv",
+      "name": "Read Patient Database (CSV)",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [-980, 0],
+      "notes": "Swap for a real PMS export/API (Dentrix/Curve/OpenDental) once a pilot clinic is live."
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "parse-csv",
+      "name": "Parse CSV to JSON",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter patients whose last visit was 6+ months ago and status is active\nconst sixMonthsAgo = new Date();\nsixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);\n\nreturn items.filter(item => {\n  const lastVisit = new Date(item.json.last_visit_date);\n  return item.json.status === 'active' && lastVisit <= sixMonthsAgo;\n}).map(item => {\n  const lastVisit = new Date(item.json.last_visit_date);\n  const monthsLapsed = Math.floor((Date.now() - lastVisit.getTime()) / (1000 * 60 * 60 * 24 * 30));\n  return { json: { ...item.json, months_lapsed: monthsLapsed } };\n});"
+      },
+      "id": "filter-lapsed",
+      "name": "Filter: Lapsed 6+ Months",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-540, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": { "reset": false }
+      },
+      "id": "loop-patients",
+      "name": "Loop Over Patients",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.phone,\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"patient_reengagement_v1\",\n    \"language\": { \"code\": \"en\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": $json.name.split(' ')[0] },\n          { \"type\": \"text\", \"text\": String($json.months_lapsed) }\n        ]\n      }\n    ]\n  }\n} }}"
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp Template (Meta Cloud API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, 0],
+      "notes": "Template must be pre-approved in Meta Business Manager. Category: Marketing (~₹0.86/message in India). Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN as n8n environment variables/credentials."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/reengagement_log/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"patient_id\": $json.patient_id, \"name\": $json.name, \"phone\": $json.phone, \"months_lapsed\": $json.months_lapsed, \"sent_at\": $now.toISO(), \"status\": \"sent\" } } }}"
+      },
+      "id": "log-sent",
+      "name": "Log Sent (Sheet)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 0],
+      "notes": "Appwrite reengagement_log, append-only (unique() ID) so repeat weekly sends to the same patient don't collide — the dashboard filters by sent_at, not by uniqueness."
+    },
+    {
+      "parameters": {},
+      "id": "loop-back",
+      "name": "Back to Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [340, 0]
+    }
+  ],
+  "connections": {
+    "Weekly Trigger (Mon 10am)": { "main": [[{ "node": "Read Patient Database (CSV)", "type": "main", "index": 0 }]] },
+    "Read Patient Database (CSV)": { "main": [[{ "node": "Parse CSV to JSON", "type": "main", "index": 0 }]] },
+    "Parse CSV to JSON": { "main": [[{ "node": "Filter: Lapsed 6+ Months", "type": "main", "index": 0 }]] },
+    "Filter: Lapsed 6+ Months": { "main": [[{ "node": "Loop Over Patients", "type": "main", "index": 0 }]] },
+    "Loop Over Patients": { "main": [[{ "node": "Send WhatsApp Template (Meta Cloud API)", "type": "main", "index": 0 }]] },
+    "Send WhatsApp Template (Meta Cloud API)": { "main": [[{ "node": "Log Sent (Sheet)", "type": "main", "index": 0 }]] },
+    "Log Sent (Sheet)": { "main": [[{ "node": "Back to Loop", "type": "main", "index": 0 }]] },
+    "Back to Loop": { "main": [[{ "node": "Loop Over Patients", "type": "main", "index": 0 }]] }
+  }
+}

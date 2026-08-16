@@ -1,5 +1,6 @@
 import React from 'react';
 import { AgentCard } from '../AgentCard';
+import { RunButton } from '../RunButton';
 import { ShieldCheck, AlertCircle } from 'lucide-react';
 import { useCollection } from '../../lib/useCollection';
 import { COLLECTIONS, Query } from '../../lib/appwrite';
@@ -18,7 +19,7 @@ function formatLakhs(amount: number): string {
 }
 
 export function InsuranceAgent() {
-  const { data, loading } = useCollection<ClaimRow>(COLLECTIONS.CLAIMS, [
+  const { data, loading, error } = useCollection<ClaimRow>(COLLECTIONS.CLAIMS, [
     Query.equal('status', 'pending'),
   ]);
 
@@ -26,7 +27,7 @@ export function InsuranceAgent() {
   const urgent = data.filter((c) => c.tier === 'urgent_forgotten');
 
   return (
-    <AgentCard title="Insurance Agent" icon={ShieldCheck} accentColor="#F43F5E" isLive={true}>
+    <AgentCard title="Insurance Agent" icon={ShieldCheck} accentColor="#F43F5E" isLive={true} error={error}>
       <div className="flex flex-col h-full justify-between">
 
         <div className="mb-4">
@@ -48,9 +49,7 @@ export function InsuranceAgent() {
           </div>
         </div>
 
-        <button className="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition-colors mt-auto">
-          Send Follow-Up
-        </button>
+        <RunButton job="claims" label="Re-Check Claims Now" className="bg-rose-600 hover:bg-rose-500 text-white" />
 
       </div>
     </AgentCard>

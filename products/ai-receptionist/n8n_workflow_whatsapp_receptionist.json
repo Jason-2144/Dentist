@@ -1,0 +1,156 @@
+{
+  "name": "2. AI Receptionist — WhatsApp Chat Widget",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "receptionist-whatsapp", "responseMode": "responseNode", "options": {} },
+      "id": "webhook-in",
+      "name": "WhatsApp Webhook (Meta)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 0],
+      "notes": "Same Meta WABA as Product 1. Point this at a *different* path so the two products don't collide, or merge later if one number should serve everything."
+    },
+    {
+      "parameters": {
+        "jsCode": "const entry = $input.first().json.entry?.[0];\nconst change = entry?.changes?.[0]?.value;\nconst message = change?.messages?.[0];\nif (!message) return [{ json: { skip: true } }];\nreturn [{ json: { from: message.from, text: message.text?.body || '', message_id: message.id } }];"
+      },
+      "id": "normalize",
+      "name": "Normalize Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-980, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/conversation_state/rows/{{$json.from}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "get-history",
+      "name": "Get Conversation History (Appwrite)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-760, 0],
+      "notes": "Document ID = phone number (natural key). 404 on first message is expected — neverError keeps the flow going with empty history."
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": { "temperature": 0.4 },
+        "messages": {
+          "values": [
+            { "role": "system", "content": "You are the AI receptionist for a dental practice, chatting on WhatsApp. Be warm and concise. Ask qualifying questions (new/returning patient, reason for visit, preferred day/time, insurance). When you have enough info, call book_appointment. If it's an emergency or something you shouldn't handle alone, call escalate_to_staff instead." },
+            { "role": "user", "content": "={{$json.text}}" }
+          ]
+        },
+        "toolsAndFunctions": {
+          "values": [
+            { "name": "book_appointment", "description": "Books an appointment once name, reason, and preferred day/time are known.", "jsonSchemaExample": "{\"patient_name\":\"string\",\"phone\":\"string\",\"reason\":\"string\",\"preferred_day_time\":\"string\",\"new_or_returning\":\"new|returning\"}" },
+            { "name": "escalate_to_staff", "description": "Escalates to a human with a summary.", "jsonSchemaExample": "{\"summary\":\"string\",\"urgency\":\"routine|same_day|emergency\"}" }
+          ]
+        }
+      },
+      "id": "llm-respond",
+      "name": "AI Receptionist (GPT-4o-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.6,
+      "position": [-540, 0],
+      "notes": "Swap model/tool-calling config to match whichever n8n OpenAI node version is installed; the shape here is illustrative of the intended tool-calling flow. Downstream nodes assume the node's output includes reply_text plus, when a tool fired, tool_name and tool_args."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $json.from, \"type\": \"text\", \"text\": { \"body\": $json.reply_text } } }}"
+      },
+      "id": "send-reply",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.N8N_BOOKING_WEBHOOK_URL}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"source\": \"ai_receptionist_whatsapp\", ...$json.tool_args } }}"
+      },
+      "id": "call-booking-webhook",
+      "name": "Book Appointment (shared webhook)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-320, -160],
+      "notes": "Calls the SAME shared booking webhook the phone bridge (server.js) calls — one source of truth for the calendar. Only fires when tool_name === 'book_appointment'."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/calls_log/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"patient_name\": $json.tool_args?.patient_name || 'Unknown', \"phone\": $json.from, \"channel\": \"whatsapp\", \"type\": $json.tool_name === 'book_appointment' ? (($json.tool_args?.new_or_returning === 'new') ? 'conversion' : 'scheduling') : ($json.tool_name === 'escalate_to_staff' ? 'escalation' : 'support'), \"summary\": $json.tool_args?.summary || $json.reply_text, \"handled_at\": $now.toISO(), \"missed\": false } } }}"
+      },
+      "id": "log-call",
+      "name": "Log Call (Appwrite calls_log)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, 40],
+      "notes": "Same collection server.js (phone bridge) writes to — this is why the AI Receptionist dashboard card can show phone + WhatsApp calls together."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/conversation_state/rows/{{$json.from}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"phone\": $json.from, \"last_message\": $json.text, \"last_reply\": $json.reply_text, \"updated_at\": $now.toISO() } } }}",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "save-history",
+      "name": "Save Conversation State (Appwrite)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, -160],
+      "notes": "PATCH creates-or-updates by document ID in Appwrite when the doc doesn't exist yet is NOT automatic — if this 404s on first message, add a fallback POST (createDocument) branch. Simplify by using upsertDocument if your Appwrite version supports it."
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": {} },
+      "id": "respond-200",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [120, 0]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook (Meta)": { "main": [[{ "node": "Normalize Message", "type": "main", "index": 0 }]] },
+    "Normalize Message": { "main": [[{ "node": "Get Conversation History (Appwrite)", "type": "main", "index": 0 }]] },
+    "Get Conversation History (Appwrite)": { "main": [[{ "node": "AI Receptionist (GPT-4o-mini)", "type": "main", "index": 0 }]] },
+    "AI Receptionist (GPT-4o-mini)": { "main": [[{ "node": "Send WhatsApp Reply", "type": "main", "index": 0 }, { "node": "Book Appointment (shared webhook)", "type": "main", "index": 0 }, { "node": "Log Call (Appwrite calls_log)", "type": "main", "index": 0 }, { "node": "Save Conversation State (Appwrite)", "type": "main", "index": 0 }]] },
+    "Send WhatsApp Reply": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Book Appointment (shared webhook)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Log Call (Appwrite calls_log)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Save Conversation State (Appwrite)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

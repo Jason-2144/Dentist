@@ -1,0 +1,82 @@
+{
+  "name": "5a. Treatment Follow-Up — Outbound Campaign",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [ { "field": "weeks", "weeksInterval": 1, "triggerAtDay": [3], "triggerAtHour": 11 } ] } }, "id": "trigger-weekly", "name": "Weekly Trigger (Wed 11am)", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-1400, 0] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/pending_treatments/rows?queries[]={{encodeURIComponent('equal(\"status\",\"pending\")')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "read-csv", "name": "Read Pending Treatments (CSV)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-1180, 0],
+      "notes": "Reads the SAME pending_treatments collection the dashboard reads. patient_id is the document $id, which is what makes the update nodes below a direct PATCH with no lookup step."
+    },
+    { "parameters": { "jsCode": "const body = $input.first().json;\nreturn (body.rows || []).map(doc => ({ json: { ...doc, patient_id: doc.$id } }));" }, "id": "parse-csv", "name": "Parse CSV to JSON", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-960, 0] },
+    {
+      "parameters": {
+        "jsCode": "// Only follow up on pending treatments recommended 14+ days ago, cap at 3 touches, then stop (logged and closed).\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - 14);\nreturn items.filter(item => {\n  const recDate = new Date(item.json.recommended_date);\n  const count = Number(item.json.follow_up_count);\n  return item.json.status === 'pending' && recDate <= cutoff && count < 3;\n}).map(item => ({ json: { ...item.json, next_follow_up_count: Number(item.json.follow_up_count) + 1 } }));"
+      },
+      "id": "filter-due", "name": "Filter: Due for Follow-Up (< 3 touches)", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-740, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.phone,\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"treatment_followup_v1\",\n    \"language\": { \"code\": \"en\" },\n    \"components\": [ { \"type\": \"body\", \"parameters\": [ { \"type\": \"text\", \"text\": $json.name.split(' ')[0] }, { \"type\": \"text\", \"text\": $json.treatment }, { \"type\": \"text\", \"text\": String($json.quoted_price) } ] } ]\n  }\n} }}"
+      },
+      "id": "send-followup", "name": "Send Follow-Up (Marketing Template + Educational Link)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-500, 0],
+      "notes": "Template body includes a link to a short educational page/video about the treatment (why it matters, what to expect)."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/pending_treatments/rows/{{$json.patient_id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"follow_up_count\": $json.next_follow_up_count } } }}"
+      },
+      "id": "update-count", "name": "Update Follow-Up Count", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-280, 0]
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "leftValue": "", "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{$json.next_follow_up_count}}", "rightValue": 3, "operator": { "type": "number", "operation": "gte" } } ], "combinator": "and" }
+      },
+      "id": "if-final-touch", "name": "IF: This Was Touch #3", "type": "n8n-nodes-base.if", "typeVersion": 2.2, "position": [-60, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/pending_treatments/rows/{{$json.patient_id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"status\": \"logged_and_closed\" } } }}"
+      },
+      "id": "close-out", "name": "Mark Logged & Closed", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [160, -100],
+      "notes": "No further automated follow-up; falls out of the dashboard's pending-count read since status changes from 'pending'."
+    }
+  ],
+  "connections": {
+    "Weekly Trigger (Wed 11am)": { "main": [[{ "node": "Read Pending Treatments (CSV)", "type": "main", "index": 0 }]] },
+    "Read Pending Treatments (CSV)": { "main": [[{ "node": "Parse CSV to JSON", "type": "main", "index": 0 }]] },
+    "Parse CSV to JSON": { "main": [[{ "node": "Filter: Due for Follow-Up (< 3 touches)", "type": "main", "index": 0 }]] },
+    "Filter: Due for Follow-Up (< 3 touches)": { "main": [[{ "node": "Send Follow-Up (Marketing Template + Educational Link)", "type": "main", "index": 0 }]] },
+    "Send Follow-Up (Marketing Template + Educational Link)": { "main": [[{ "node": "Update Follow-Up Count", "type": "main", "index": 0 }]] },
+    "Update Follow-Up Count": { "main": [[{ "node": "IF: This Was Touch #3", "type": "main", "index": 0 }]] },
+    "IF: This Was Touch #3": { "main": [[{ "node": "Mark Logged & Closed", "type": "main", "index": 0 }], []] }
+  }
+}

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>How was your visit?</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f7f7f8;
+  }
+  .card { text-align: center; max-width: 480px; padding: 40px; }
+  h1 { font-size: 28px; margin-bottom: 8px; color: #1a1a1a; }
+  p.sub { color: #666; margin-bottom: 32px; font-size: 16px; }
+  .stars { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; }
+  .star {
+    font-size: 56px; cursor: pointer; color: #ddd; transition: transform 0.1s, color 0.15s; user-select: none;
+  }
+  .star.active { color: #f5a623; transform: scale(1.1); }
+  .status { font-size: 18px; margin-top: 24px; color: #1a1a1a; min-height: 24px; }
+  .patient-name-input {
+    width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>How was your visit today?</h1>
+    <p class="sub">Tap a star to rate your experience</p>
+    <input class="patient-name-input" id="phone" placeholder="Your phone number (for our records)" />
+    <div class="stars" id="stars">
+      <span class="star" data-value="1">★</span>
+      <span class="star" data-value="2">★</span>
+      <span class="star" data-value="3">★</span>
+      <span class="star" data-value="4">★</span>
+      <span class="star" data-value="5">★</span>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+<script>
+  // Point this at your n8n instance's rating webhook (same one WhatsApp replies feed into).
+  const RATING_WEBHOOK_URL = 'https://YOUR-N8N-HOST/webhook/rating-submit';
+
+  const stars = document.querySelectorAll('.star');
+  const status = document.getElementById('status');
+  let submitted = false;
+
+  stars.forEach(star => {
+    star.addEventListener('click', async () => {
+      if (submitted) return;
+      const value = parseInt(star.dataset.value, 10);
+      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.value, 10) <= value));
+
+      const phone = document.getElementById('phone').value.trim();
+      if (!phone) {
+        status.textContent = 'Please enter your phone number first.';
+        return;
+      }
+
+      submitted = true;
+      status.textContent = 'Submitting...';
+      try {
+        await fetch(RATING_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, rating: value, source: 'kiosk' }),
+        });
+        status.textContent = value >= 4
+          ? 'Thank you! Check your WhatsApp for a quick link to share.'
+          : "Thanks for the honest feedback — we'll follow up with you directly.";
+      } catch (e) {
+        status.textContent = 'Something went wrong — please try again.';
+        submitted = false;
+      }
+    });
+  });
+</script>
+</body>
+</html>

@@ -10,13 +10,13 @@ interface AppointmentRow {
 }
 
 export function WebsiteBooking() {
-  const { data, loading } = useCollection<AppointmentRow>(COLLECTIONS.APPOINTMENTS, [
+  const { data, loading, error } = useCollection<AppointmentRow>(COLLECTIONS.APPOINTMENTS, [
     Query.equal('source', 'website'),
     Query.greaterThanEqual('$createdAt', startOfTodayISO()),
   ]);
 
   return (
-    <AgentCard title="Website & Booking" icon={Globe} accentColor="#06B6D4" isLive={true}>
+    <AgentCard title="Website & Booking" icon={Globe} accentColor="#06B6D4" isLive={true} error={error}>
       <div className="flex flex-col h-full justify-between">
 
         <div className="flex items-center justify-between mb-4">
@@ -48,9 +48,9 @@ export function WebsiteBooking() {
         </div>
 
         <div className="mt-auto border-t border-white/5 pt-3">
-           <a href="#" className="text-cyan-400 text-xs font-medium flex items-center hover:text-cyan-300 transition-colors">
-             View live heatmaps <ArrowRight size={12} className="ml-1" />
-           </a>
+           <span className="text-gray-600 text-xs font-medium flex items-center cursor-not-allowed" title="Requires an analytics integration (Plausible/GA4) — not yet connected">
+             Heatmaps unavailable <ArrowRight size={12} className="ml-1" />
+           </span>
         </div>
 
       </div>

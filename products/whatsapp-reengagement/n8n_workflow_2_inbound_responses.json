@@ -1,0 +1,183 @@
+{
+  "name": "2. WhatsApp Re-Engagement — Inbound Response Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-in",
+      "name": "WhatsApp Webhook (Meta)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 0],
+      "notes": "Register this URL in Meta Business Manager > WhatsApp > Configuration > Webhook. Verify token must match WHATSAPP_VERIFY_TOKEN env var."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize Meta webhook payload into a flat object\nconst entry = $input.first().json.entry?.[0];\nconst change = entry?.changes?.[0]?.value;\nconst message = change?.messages?.[0];\nif (!message) {\n  return [{ json: { skip: true } }];\n}\nreturn [{\n  json: {\n    from: message.from,\n    text: (message.text?.body || '').trim().toLowerCase(),\n    message_id: message.id,\n    timestamp: message.timestamp\n  }\n}];"
+      },
+      "id": "normalize",
+      "name": "Normalize Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-980, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            { "leftValue": "={{$json.skip}}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-skip",
+      "name": "IF: No Real Message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": { "conditions": [ { "leftValue": "={{$json.text}}", "rightValue": "yes|book|confirm|slot", "operator": { "type": "string", "operation": "regex" } } ] },
+              "outputKey": "books_appointment"
+            },
+            {
+              "conditions": { "conditions": [ { "leftValue": "={{$json.text}}", "rightValue": "refer|friend|share", "operator": { "type": "string", "operation": "regex" } } ] },
+              "outputKey": "shares_referral"
+            }
+          ]
+        },
+        "fallbackOutput": "no_response_or_other"
+      },
+      "id": "switch-response",
+      "name": "Switch: Classify Response",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-540, -120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.from,\n  \"type\": \"text\",\n  \"text\": { \"body\": \"Great — you're booked! We'll send a confirmation with your appointment time shortly.\" }\n} }}"
+      },
+      "id": "confirm-booking",
+      "name": "Send Booking Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-300, -260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/reengagement_log/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"phone\": $json.from, \"status\": \"booked\", \"sent_at\": $now.toISO() } } }}"
+      },
+      "id": "log-booked",
+      "name": "Log: Booked",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, -260],
+      "notes": "Appends a new status-event row rather than mutating the original 'sent' row (reengagement_log is append-only, filtered by date/status on read) — avoids a query-then-update round trip."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.from,\n  \"type\": \"text\",\n  \"text\": { \"body\": \"Love your smile? Share this coupon with a friend — they get 20% off their first visit, you get a free whitening kit! Just share your referral link: {{$env.REFERRAL_LINK_BASE}}\" + $json.from }\n} }}"
+      },
+      "id": "send-referral",
+      "name": "Send Referral Coupon",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-300, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/reengagement_log/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"phone\": $json.from, \"status\": \"referral_sent\", \"sent_at\": $now.toISO() } } }}"
+      },
+      "id": "log-referral",
+      "name": "Log: Referral Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/reengagement_log/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"phone\": $json.from, \"status\": \"no_response\", \"sent_at\": $now.toISO() } } }}"
+      },
+      "id": "log-noresponse",
+      "name": "Log: No Response (Queue for Seasonal Campaign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-300, 140],
+      "notes": "Feeds Product #6's seasonal campaign trigger (back-to-school / New Year promo) for patients who didn't respond to the first nudge."
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": {} },
+      "id": "respond-200",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [120, -120]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook (Meta)": { "main": [[{ "node": "Normalize Message", "type": "main", "index": 0 }]] },
+    "Normalize Message": { "main": [[{ "node": "IF: No Real Message", "type": "main", "index": 0 }]] },
+    "IF: No Real Message": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }], [{ "node": "Switch: Classify Response", "type": "main", "index": 0 }]] },
+    "Switch: Classify Response": {
+      "main": [
+        [{ "node": "Send Booking Confirmation", "type": "main", "index": 0 }],
+        [{ "node": "Send Referral Coupon", "type": "main", "index": 0 }],
+        [{ "node": "Log: No Response (Queue for Seasonal Campaign)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Booking Confirmation": { "main": [[{ "node": "Log: Booked", "type": "main", "index": 0 }]] },
+    "Log: Booked": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Send Referral Coupon": { "main": [[{ "node": "Log: Referral Sent", "type": "main", "index": 0 }]] },
+    "Log: Referral Sent": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Log: No Response (Queue for Seasonal Campaign)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

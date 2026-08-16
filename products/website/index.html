@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{PRACTICE_NAME}} — Dental Care in {{CITY}}</title>
+<meta name="description" content="{{PRACTICE_NAME}} offers cleaning, fillings, root canals, crowns, and whitening in {{CITY}}. Book your appointment online in under a minute." />
+<meta property="og:title" content="{{PRACTICE_NAME}} — Dental Care in {{CITY}}" />
+<meta property="og:description" content="Modern dental care in {{CITY}}. Book online, WhatsApp us anytime." />
+<meta property="og:type" content="business.business" />
+<link rel="canonical" href="https://{{DOMAIN}}/" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dentist",
+  "name": "{{PRACTICE_NAME}}",
+  "image": "https://{{DOMAIN}}/assets/hero.jpg",
+  "telephone": "{{PHONE}}",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "{{STREET_ADDRESS}}",
+    "addressLocality": "{{CITY}}",
+    "addressRegion": "{{STATE}}",
+    "postalCode": "{{POSTAL_CODE}}",
+    "addressCountry": "IN"
+  },
+  "openingHours": ["Mo-Sa 09:00-19:00"],
+  "priceRange": "₹₹"
+}
+</script>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --ink: #1a1a1a;
+    --muted: #666;
+    --bg-alt: #f7f9fc;
+    --whatsapp: #25d366;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--ink); line-height: 1.6; }
+  a { text-decoration: none; color: inherit; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  header { position: sticky; top: 0; background: #fff; border-bottom: 1px solid #eee; z-index: 100; }
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; max-width: 1100px; margin: 0 auto; }
+  nav .logo { font-weight: 700; font-size: 20px; }
+  nav ul { display: flex; gap: 28px; list-style: none; }
+  nav ul a:hover { color: var(--primary); }
+  .btn { display: inline-block; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 15px; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+
+  .hero { background: linear-gradient(180deg, var(--bg-alt) 0%, #fff 100%); padding: 80px 24px; text-align: center; }
+  .hero h1 { font-size: 42px; margin-bottom: 16px; }
+  .hero p { font-size: 18px; color: var(--muted); max-width: 560px; margin: 0 auto 32px; }
+
+  section { padding: 72px 0; }
+  section h2 { font-size: 30px; margin-bottom: 8px; text-align: center; }
+  section .lede { text-align: center; color: var(--muted); margin-bottom: 40px; }
+
+  .services-grid, .gallery-grid, .pricing-grid { display: grid; gap: 24px; }
+  .services-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .service-card { background: var(--bg-alt); padding: 28px; border-radius: 12px; }
+  .service-card h3 { margin-bottom: 8px; }
+
+  .gallery-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .gallery-grid div { aspect-ratio: 1; background: #e5e7eb; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 13px; }
+
+  .pricing-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .price-card { border: 1px solid #eee; border-radius: 12px; padding: 24px; text-align: center; }
+  .price-card .amount { font-size: 28px; font-weight: 700; color: var(--primary); margin: 8px 0; }
+
+  .faq-item { border-bottom: 1px solid #eee; padding: 20px 0; }
+  .faq-item summary { cursor: pointer; font-weight: 600; font-size: 17px; }
+  .faq-item p { margin-top: 10px; color: var(--muted); }
+
+  #book { background: var(--bg-alt); }
+  .book-form { max-width: 480px; margin: 0 auto; display: grid; gap: 14px; }
+  .book-form input, .book-form select { padding: 12px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; }
+  .book-status { text-align: center; margin-top: 12px; font-size: 14px; }
+
+  footer { background: var(--ink); color: #ccc; padding: 40px 24px; text-align: center; font-size: 14px; }
+
+  .whatsapp-fab {
+    position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px; border-radius: 50%;
+    background: var(--whatsapp); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 200;
+  }
+  .whatsapp-fab svg { width: 30px; height: 30px; fill: #fff; }
+
+  @media (max-width: 640px) {
+    nav ul { display: none; }
+    .hero h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <div class="logo">{{PRACTICE_NAME}}</div>
+    <ul>
+      <li><a href="#about">About</a></li>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#gallery">Gallery</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <a href="#book" class="btn btn-primary">Book Now</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1>Modern dental care, without the wait</h1>
+    <p>{{PRACTICE_NAME}} offers cleanings, fillings, root canals, crowns, and whitening in {{CITY}} — book online in under a minute.</p>
+    <a href="#book" class="btn btn-primary">Book an Appointment</a>
+  </div>
+</section>
+
+<section id="about">
+  <div class="container">
+    <h2>About Us</h2>
+    <p class="lede">{{ABOUT_BLURB — e.g. "10+ years serving {{CITY}}, led by Dr. {{DOCTOR_NAME}}, focused on gentle, modern dentistry for the whole family."}}</p>
+  </div>
+</section>
+
+<section id="services" style="background:var(--bg-alt)">
+  <div class="container">
+    <h2>Services</h2>
+    <p class="lede">Everything your smile needs, under one roof</p>
+    <div class="services-grid">
+      <div class="service-card"><h3>Cleaning &amp; Checkups</h3><p>Routine exams and professional cleaning to keep small problems small.</p></div>
+      <div class="service-card"><h3>Fillings</h3><p>Tooth-colored fillings, done comfortably, usually in one visit.</p></div>
+      <div class="service-card"><h3>Root Canal</h3><p>Pain relief and tooth preservation with modern, gentle technique.</p></div>
+      <div class="service-card"><h3>Crowns &amp; Bridges</h3><p>Restore strength and appearance to damaged or missing teeth.</p></div>
+      <div class="service-card"><h3>Teeth Whitening</h3><p>Safe, in-office whitening for a noticeably brighter smile.</p></div>
+      <div class="service-card"><h3>Emergency Care</h3><p>Same-day appointments for pain, swelling, or dental trauma.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="gallery">
+  <div class="container">
+    <h2>Our Practice</h2>
+    <p class="lede">A look inside</p>
+    <div class="gallery-grid">
+      <div>Photo 1</div><div>Photo 2</div><div>Photo 3</div><div>Photo 4</div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" style="background:var(--bg-alt)">
+  <div class="container">
+    <h2>Pricing</h2>
+    <p class="lede">Transparent, upfront pricing — no surprises</p>
+    <div class="pricing-grid">
+      <div class="price-card"><h3>Checkup + Cleaning</h3><div class="amount">₹{{PRICE_CHECKUP}}</div></div>
+      <div class="price-card"><h3>Filling</h3><div class="amount">₹{{PRICE_FILLING}}</div></div>
+      <div class="price-card"><h3>Root Canal</h3><div class="amount">₹{{PRICE_ROOT_CANAL}}</div></div>
+      <div class="price-card"><h3>Whitening</h3><div class="amount">₹{{PRICE_WHITENING}}</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container">
+    <h2>Frequently Asked Questions</h2>
+    <details class="faq-item"><summary>Do you accept insurance?</summary><p>{{FAQ_INSURANCE_ANSWER}}</p></details>
+    <details class="faq-item"><summary>Do you take walk-ins?</summary><p>{{FAQ_WALKIN_ANSWER}}</p></details>
+    <details class="faq-item"><summary>What are your hours?</summary><p>Mon–Sat, 9am–7pm.</p></details>
+    <details class="faq-item"><summary>Is teeth whitening safe?</summary><p>{{FAQ_WHITENING_ANSWER}}</p></details>
+  </div>
+</section>
+
+<section id="book">
+  <div class="container">
+    <h2>Book an Appointment</h2>
+    <p class="lede">We'll confirm by WhatsApp within minutes</p>
+
+    <!-- Option A: embed Calendly directly (uncomment and set your link) -->
+    <!-- <div class="calendly-inline-widget" data-url="https://calendly.com/{{CALENDLY_HANDLE}}" style="min-width:320px;height:630px;"></div>
+    <script src="https://assets.calendly.com/assets/external/widget.js" async></script> -->
+
+    <!-- Option B: lightweight form -> posts straight to the shared booking webhook (reuses Product 2's infra) -->
+    <form class="book-form" id="bookForm">
+      <input type="text" name="patient_name" placeholder="Full name" required />
+      <input type="tel" name="phone" placeholder="Phone (WhatsApp)" required />
+      <select name="reason" required>
+        <option value="">Reason for visit</option>
+        <option>Checkup / Cleaning</option>
+        <option>Filling</option>
+        <option>Root Canal</option>
+        <option>Crown</option>
+        <option>Whitening</option>
+        <option>Emergency / Pain</option>
+      </select>
+      <input type="text" name="preferred_day_time" placeholder="Preferred day/time (e.g. Mon morning)" required />
+      <button type="submit" class="btn btn-primary">Request Appointment</button>
+      <div class="book-status" id="bookStatus"></div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>{{PRACTICE_NAME}} · {{STREET_ADDRESS}}, {{CITY}} · {{PHONE}}</p>
+    <p style="margin-top:8px;">&copy; <span id="year"></span> {{PRACTICE_NAME}}. All rights reserved.</p>
+  </div>
+</footer>
+
+<a class="whatsapp-fab" href="https://wa.me/{{WHATSAPP_NUMBER_INTL}}?text=Hi%2C%20I%27d%20like%20to%20book%20an%20appointment" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.4 1.26 4.83L2 22l5.35-1.36a9.9 9.9 0 0 0 4.69 1.19h.01c5.46 0 9.9-4.45 9.9-9.92S17.5 2 12.04 2zm5.79 14.08c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.3-1.65-.6-2.9-1.25-4.8-4.16-4.94-4.35-.14-.19-1.18-1.57-1.18-3s.75-2.13 1.02-2.42c.27-.29.58-.36.77-.36.19 0 .39 0 .56.01.18.01.42-.07.66.5.24.58.83 2 .9 2.14.07.14.12.31.02.5-.1.19-.15.31-.29.48-.14.17-.3.37-.43.5-.14.14-.29.29-.12.58.17.29.75 1.24 1.61 2.01 1.11.99 2.04 1.3 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.63-.14.26.1 1.65.78 1.93.92.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/></svg>
+</a>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  const BOOKING_WEBHOOK_URL = 'https://YOUR-N8N-HOST/webhook/book-appointment'; // same shared webhook as Products 2 & 5
+
+  document.getElementById('bookForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const status = document.getElementById('bookStatus');
+    const data = Object.fromEntries(new FormData(form).entries());
+    status.textContent = 'Sending...';
+    try {
+      await fetch(BOOKING_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'website', ...data }),
+      });
+      status.textContent = "Thanks! We'll confirm your slot by WhatsApp shortly.";
+      form.reset();
+    } catch (err) {
+      status.textContent = 'Something went wrong — please WhatsApp us directly using the button below.';
+    }
+  });
+</script>
+
+</body>
+</html>

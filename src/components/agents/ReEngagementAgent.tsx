@@ -1,5 +1,6 @@
 import React from 'react';
 import { AgentCard } from '../AgentCard';
+import { RunButton } from '../RunButton';
 import { Mail } from 'lucide-react';
 import { useCollection } from '../../lib/useCollection';
 import { COLLECTIONS, Query, startOfTodayISO } from '../../lib/appwrite';
@@ -19,7 +20,7 @@ const STATUS_LABEL: Record<ReengagementRow['status'], { label: string; color: st
 };
 
 export function ReEngagementAgent() {
-  const { data, loading } = useCollection<ReengagementRow>(COLLECTIONS.REENGAGEMENT_LOG, [
+  const { data, loading, error } = useCollection<ReengagementRow>(COLLECTIONS.REENGAGEMENT_LOG, [
     Query.greaterThanEqual('sent_at', startOfTodayISO()),
     Query.orderDesc('sent_at'),
     Query.limit(3),
@@ -31,7 +32,7 @@ export function ReEngagementAgent() {
   ]);
 
   return (
-    <AgentCard title="Re-Engagement Agent" icon={Mail} accentColor="#3B82F6" isLive={true}>
+    <AgentCard title="Re-Engagement Agent" icon={Mail} accentColor="#3B82F6" isLive={true} error={error}>
       <div className="flex flex-col h-full justify-between">
         <div className="mb-4">
           <p className="text-3xl font-light text-gray-100 tracking-tight">
@@ -57,9 +58,7 @@ export function ReEngagementAgent() {
           })}
         </div>
 
-        <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors mt-auto">
-          Run Campaign
-        </button>
+        <RunButton job="reengagement" label="Run Campaign Now" className="bg-blue-600 hover:bg-blue-500 text-white" />
       </div>
     </AgentCard>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AgentCard } from '../AgentCard';
+import { RunButton } from '../RunButton';
 import { Stethoscope } from 'lucide-react';
 import { useCollection } from '../../lib/useCollection';
 import { COLLECTIONS, Query } from '../../lib/appwrite';
@@ -14,7 +15,7 @@ interface TreatmentRow {
 }
 
 export function TreatmentFollowUp() {
-  const { data, loading } = useCollection<TreatmentRow>(COLLECTIONS.PENDING_TREATMENTS, [
+  const { data, loading, error } = useCollection<TreatmentRow>(COLLECTIONS.PENDING_TREATMENTS, [
     Query.equal('status', 'pending'),
   ]);
 
@@ -30,7 +31,7 @@ export function TreatmentFollowUp() {
   const lastUpsell = bookedRecently[0];
 
   return (
-    <AgentCard title="Treatment Follow-Up" icon={Stethoscope} accentColor="#6366F1" isLive={true}>
+    <AgentCard title="Treatment Follow-Up" icon={Stethoscope} accentColor="#6366F1" isLive={true} error={error}>
       <div className="flex flex-col h-full justify-between">
 
         <div>
@@ -62,6 +63,8 @@ export function TreatmentFollowUp() {
             <p className="text-xs text-gray-500">No conversions yet.</p>
           )}
         </div>
+
+        <RunButton job="followup" label="Send Follow-Ups Now" className="bg-indigo-600 hover:bg-indigo-500 text-white" />
 
       </div>
     </AgentCard>

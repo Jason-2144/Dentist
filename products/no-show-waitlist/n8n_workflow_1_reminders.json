@@ -1,0 +1,120 @@
+{
+  "name": "3a. No-Show Recovery — Reminder Sender",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [ { "field": "hours", "hoursInterval": 1 } ] } },
+      "id": "trigger-hourly",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1400, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/appointments/rows?queries[]={{encodeURIComponent('equal(\"status\",\"scheduled\")')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "read-appts",
+      "name": "Read Scheduled Appointments (Appwrite)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1180, 0],
+      "notes": "Reads the SAME appointments collection the dashboard reads and the shared booking webhook writes. For a real PMS-imported calendar (not booked through our agents), a separate sync job should upsert those rows into this collection first."
+    },
+    {
+      "parameters": { "jsCode": "// Appwrite wraps results in { documents: [...] }; flatten to n8n items.\nconst body = $input.first().json;\nreturn (body.rows || []).map(doc => ({ json: { ...doc, appointment_id: doc.$id } }));" },
+      "id": "parse-csv",
+      "name": "Flatten Appwrite Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine which reminder window (72h/24h/2h) each scheduled appointment currently falls into.\nconst now = Date.now();\nconst windows = [ { key: '72h', ms: 72*3600*1000 }, { key: '24h', ms: 24*3600*1000 }, { key: '2h', ms: 2*3600*1000 } ];\nconst out = [];\nfor (const item of items) {\n  if (item.json.status !== 'scheduled') continue;\n  const apptTime = new Date(item.json.appointment_datetime).getTime();\n  const diff = apptTime - now;\n  for (const w of windows) {\n    // fire if we're within the hourly tick of this window (tolerance +/- 30 min)\n    if (Math.abs(diff - w.ms) <= 30*60*1000) {\n      out.push({ json: { ...item.json, reminder_window: w.key, is_chronic_no_show: Number(item.json.no_show_count) >= 2 } });\n    }\n  }\n}\nreturn out;"
+      },
+      "id": "compute-window",
+      "name": "Compute Due Reminders (72h/24h/2h)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-740, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.phone,\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"appointment_reminder_v1\",\n    \"language\": { \"code\": \"en\" },\n    \"components\": [ { \"type\": \"body\", \"parameters\": [ { \"type\": \"text\", \"text\": $json.name.split(' ')[0] }, { \"type\": \"text\", \"text\": $json.appointment_datetime }, { \"type\": \"text\", \"text\": $json.reminder_window } ] } ]\n  }\n} }}"
+      },
+      "id": "send-reminder",
+      "name": "Send Reminder (Utility Template)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-500, 0],
+      "notes": "Utility-category template (appointment reminder) ≈ ₹0.11/message — far cheaper than marketing."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/reminder_log/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"appointment_id\": $json.appointment_id, \"patient_id\": $json.patient_id, \"reminder_window\": $json.reminder_window, \"is_chronic_no_show\": $json.is_chronic_no_show, \"sent_at\": $now.toISO() } } }}"
+      },
+      "id": "log-reminder",
+      "name": "Log Reminder Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, 0],
+      "notes": "Auxiliary log, append-only. Not read by the dashboard directly (the No-Show Recovery card reads the appointments collection instead) but useful for auditing reminder cadence."
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "leftValue": "", "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{$json.is_chronic_no_show}}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } } ], "combinator": "and" }
+      },
+      "id": "if-chronic",
+      "name": "IF: Chronic No-Shower",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-60, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $env.FRONT_DESK_WHATSAPP_NUMBER, \"type\": \"text\", \"text\": { \"body\": \"⚠️ Chronic no-show flag: \" + $json.name + \" (\" + $json.phone + \") has \" + $json.no_show_count + \" prior no-shows and has an appointment on \" + $json.appointment_datetime + \". Consider a confirmation call.\" } } }}"
+      },
+      "id": "alert-front-desk",
+      "name": "Alert Front Desk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [160, -100]
+    }
+  ],
+  "connections": {
+    "Hourly Trigger": { "main": [[{ "node": "Read Scheduled Appointments (Appwrite)", "type": "main", "index": 0 }]] },
+    "Read Scheduled Appointments (Appwrite)": { "main": [[{ "node": "Flatten Appwrite Response", "type": "main", "index": 0 }]] },
+    "Flatten Appwrite Response": { "main": [[{ "node": "Compute Due Reminders (72h/24h/2h)", "type": "main", "index": 0 }]] },
+    "Compute Due Reminders (72h/24h/2h)": { "main": [[{ "node": "Send Reminder (Utility Template)", "type": "main", "index": 0 }]] },
+    "Send Reminder (Utility Template)": { "main": [[{ "node": "Log Reminder Sent", "type": "main", "index": 0 }]] },
+    "Log Reminder Sent": { "main": [[{ "node": "IF: Chronic No-Shower", "type": "main", "index": 0 }]] },
+    "IF: Chronic No-Shower": { "main": [[{ "node": "Alert Front Desk", "type": "main", "index": 0 }], []] }
+  }
+}

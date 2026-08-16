@@ -17,7 +17,7 @@ interface CallRow {
 export function AIReceptionist() {
   const [isActive, setIsActive] = useState(true);
 
-  const { data: today, loading } = useCollection<CallRow>(COLLECTIONS.CALLS_LOG, [
+  const { data: today, loading, error } = useCollection<CallRow>(COLLECTIONS.CALLS_LOG, [
     Query.greaterThanEqual('handled_at', startOfTodayISO()),
     Query.orderDesc('handled_at'),
   ]);
@@ -27,7 +27,7 @@ export function AIReceptionist() {
   const recent = today.slice(0, 3);
 
   return (
-    <AgentCard title="AI Receptionist" icon={PhoneCall} accentColor="#14B8A6" isLive={isActive}>
+    <AgentCard title="AI Receptionist" icon={PhoneCall} accentColor="#14B8A6" isLive={isActive} error={error}>
       <div className="flex flex-col h-full justify-between">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -40,6 +40,8 @@ export function AIReceptionist() {
 
           <button
             onClick={() => setIsActive(!isActive)}
+            aria-label={isActive ? 'Receptionist is live — click to mark as off duty (display only)' : 'Receptionist marked off duty — click to mark as live (display only)'}
+            title="Display only — does not stop the phone line. Deploy/redeploy the automation service to actually take the receptionist offline."
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isActive ? 'bg-teal-500' : 'bg-gray-600'}`}
           >
             <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isActive ? 'translate-x-5' : 'translate-x-1'}`} />

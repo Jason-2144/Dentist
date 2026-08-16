@@ -1,0 +1,99 @@
+{
+  "name": "3b. No-Show Recovery — Confirmation Handler",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "noshow-webhook", "responseMode": "responseNode", "options": {} }, "id": "webhook-in", "name": "WhatsApp Webhook (Meta)", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [-1200, 0] },
+    {
+      "parameters": {
+        "jsCode": "const entry = $input.first().json.entry?.[0];\nconst change = entry?.changes?.[0]?.value;\nconst message = change?.messages?.[0];\nif (!message) return [{ json: { skip: true } }];\nreturn [{ json: { from: message.from, text: (message.text?.body||'').trim().toLowerCase() } }];"
+      },
+      "id": "normalize", "name": "Normalize Message", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-980, 0]
+    },
+    {
+      "parameters": {
+        "rules": { "values": [
+          { "conditions": { "conditions": [ { "leftValue": "={{$json.text}}", "rightValue": "yes|confirm", "operator": { "type": "string", "operation": "regex" } } ] }, "outputKey": "confirmed" },
+          { "conditions": { "conditions": [ { "leftValue": "={{$json.text}}", "rightValue": "no|cancel|can't|cant|reschedule", "operator": { "type": "string", "operation": "regex" } } ] }, "outputKey": "cancelled" }
+        ] },
+        "fallbackOutput": "unclear"
+      },
+      "id": "switch-response", "name": "Switch: Classify Reply", "type": "n8n-nodes-base.switch", "typeVersion": 3.2, "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/appointments/rows?queries[]={{encodeURIComponent('equal(\"phone\",\"'+$json.from+'\")')}}&queries[]={{encodeURIComponent('equal(\"status\",\"pending_confirmation\")')}}&queries[]={{encodeURIComponent('limit(1)')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "find-appt-confirm", "name": "Find Appointment by Phone (for Confirm)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-520, -220]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/appointments/rows/{{$json.documents[0].$id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"status\": \"confirmed\" } } }}",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "mark-confirmed", "name": "Mark Appointment Confirmed", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-300, -220],
+      "notes": "neverError so a phone that doesn't match any pending appointment (e.g. late/duplicate reply) doesn't break the flow."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/appointments/rows?queries[]={{encodeURIComponent('equal(\"phone\",\"'+$json.from+'\")')}}&queries[]={{encodeURIComponent('equal(\"status\",\"pending_confirmation\")')}}&queries[]={{encodeURIComponent('limit(1)')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "find-appt-cancel", "name": "Find Appointment by Phone (for Cancel)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-520, 20]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/appointments/rows/{{$json.documents[0].$id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"status\": \"cancelled\" } } }}",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "mark-cancelled", "name": "Mark Appointment Cancelled", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-300, 20]
+    },
+    {
+      "parameters": { "method": "POST", "url": "={{$env.N8N_WAITLIST_FILL_WEBHOOK_URL}}", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { \"cancelled_phone\": $json.from } }}" },
+      "id": "trigger-waitlist", "name": "Trigger Waitlist Fill", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-80, 20],
+      "notes": "Calls workflow 3c to instantly text the top 3 waitlisted patients."
+    },
+    { "parameters": { "respondWith": "noData", "options": {} }, "id": "respond-200", "name": "Respond 200 OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [120, -100] }
+  ],
+  "connections": {
+    "WhatsApp Webhook (Meta)": { "main": [[{ "node": "Normalize Message", "type": "main", "index": 0 }]] },
+    "Normalize Message": { "main": [[{ "node": "Switch: Classify Reply", "type": "main", "index": 0 }]] },
+    "Switch: Classify Reply": { "main": [
+      [{ "node": "Find Appointment by Phone (for Confirm)", "type": "main", "index": 0 }],
+      [{ "node": "Find Appointment by Phone (for Cancel)", "type": "main", "index": 0 }],
+      [{ "node": "Respond 200 OK", "type": "main", "index": 0 }]
+    ] },
+    "Find Appointment by Phone (for Confirm)": { "main": [[{ "node": "Mark Appointment Confirmed", "type": "main", "index": 0 }]] },
+    "Mark Appointment Confirmed": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Find Appointment by Phone (for Cancel)": { "main": [[{ "node": "Mark Appointment Cancelled", "type": "main", "index": 0 }]] },
+    "Mark Appointment Cancelled": { "main": [[{ "node": "Trigger Waitlist Fill", "type": "main", "index": 0 }]] },
+    "Trigger Waitlist Fill": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

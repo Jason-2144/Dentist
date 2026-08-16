@@ -1,0 +1,87 @@
+{
+  "name": "5b. Treatment Follow-Up — Response Handler",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "treatment-followup-webhook", "responseMode": "responseNode", "options": {} }, "id": "webhook-in", "name": "WhatsApp Webhook (Meta)", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [-1200, 0] },
+    {
+      "parameters": { "jsCode": "const entry = $input.first().json.entry?.[0];\nconst change = entry?.changes?.[0]?.value;\nconst message = change?.messages?.[0];\nif (!message) return [{ json: { skip: true } }];\nreturn [{ json: { from: message.from, text: (message.text?.body||'').trim().toLowerCase() } }];" },
+      "id": "normalize", "name": "Normalize Message", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-980, 0]
+    },
+    {
+      "parameters": {
+        "rules": { "values": [
+          { "conditions": { "conditions": [ { "leftValue": "={{$json.text}}", "rightValue": "yes|book|slot", "operator": { "type": "string", "operation": "regex" } } ] }, "outputKey": "books" },
+          { "conditions": { "conditions": [ { "leftValue": "={{$json.text}}", "rightValue": "no|not now|stop|decline", "operator": { "type": "string", "operation": "regex" } } ] }, "outputKey": "declines" }
+        ] },
+        "fallbackOutput": "unclear"
+      },
+      "id": "switch-response", "name": "Switch: Classify Reply", "type": "n8n-nodes-base.switch", "typeVersion": 3.2, "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/pending_treatments/rows?queries[]={{encodeURIComponent('equal(\"phone\",\"'+$json.from+'\")')}}&queries[]={{encodeURIComponent('limit(1)')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "lookup-treatment", "name": "Look Up Pending Treatment", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-540, -120]
+    },
+    {
+      "parameters": { "jsCode": "const doc = ($input.first().json.documents || [])[0];\nreturn [{ json: doc ? { ...doc, patient_id: doc.$id } : { missing: true } }];" },
+      "id": "flatten-treatment", "name": "Flatten Lookup Result", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-440, -120]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "={{$env.N8N_BOOKING_WEBHOOK_URL}}", "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"source\": \"treatment_followup\", \"patient_name\": $json.name, \"phone\": $json.phone, \"reason\": $json.treatment, \"preferred_day_time\": \"any\" } }}"
+      },
+      "id": "call-shared-booking", "name": "Book via Shared Webhook (from Product 2)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-320, -120],
+      "notes": "Reuses the SAME shared booking webhook as the AI Receptionist product — one calendar, no matter which product made the booking."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/pending_treatments/rows?queries[]={{encodeURIComponent('equal(\"phone\",\"'+$json.from+'\")')}}&queries[]={{encodeURIComponent('limit(1)')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "lookup-treatment-decline", "name": "Look Up Pending Treatment (for Decline)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-540, 40]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/pending_treatments/rows/{{$json.documents[0].$id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"status\": \"declined\" } } }}",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "mark-declined", "name": "Mark Declined", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-320, 40]
+    },
+    { "parameters": { "respondWith": "noData", "options": {} }, "id": "respond-200", "name": "Respond 200 OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [-100, -40] }
+  ],
+  "connections": {
+    "WhatsApp Webhook (Meta)": { "main": [[{ "node": "Normalize Message", "type": "main", "index": 0 }]] },
+    "Normalize Message": { "main": [[{ "node": "Switch: Classify Reply", "type": "main", "index": 0 }]] },
+    "Switch: Classify Reply": { "main": [
+      [{ "node": "Look Up Pending Treatment", "type": "main", "index": 0 }],
+      [{ "node": "Look Up Pending Treatment (for Decline)", "type": "main", "index": 0 }],
+      [{ "node": "Respond 200 OK", "type": "main", "index": 0 }]
+    ] },
+    "Look Up Pending Treatment": { "main": [[{ "node": "Flatten Lookup Result", "type": "main", "index": 0 }]] },
+    "Flatten Lookup Result": { "main": [[{ "node": "Book via Shared Webhook (from Product 2)", "type": "main", "index": 0 }]] },
+    "Book via Shared Webhook (from Product 2)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Look Up Pending Treatment (for Decline)": { "main": [[{ "node": "Mark Declined", "type": "main", "index": 0 }]] },
+    "Mark Declined": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

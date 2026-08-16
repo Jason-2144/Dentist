@@ -1,5 +1,6 @@
 import React from 'react';
 import { AgentCard } from '../AgentCard';
+import { RunButton } from '../RunButton';
 import { HeartHandshake, Star } from 'lucide-react';
 import { useCollection } from '../../lib/useCollection';
 import { COLLECTIONS, Query } from '../../lib/appwrite';
@@ -20,7 +21,7 @@ export function ReputationAgent() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const { data, loading } = useCollection<RatingRow>(COLLECTIONS.RATINGS, [
+  const { data, loading, error } = useCollection<RatingRow>(COLLECTIONS.RATINGS, [
     Query.greaterThanEqual('logged_at', sevenDaysAgo.toISOString()),
     Query.orderDesc('logged_at'),
   ]);
@@ -31,7 +32,7 @@ export function ReputationAgent() {
   const mostRecent = data[0];
 
   return (
-    <AgentCard title="Reputation Agent" icon={HeartHandshake} accentColor="#A855F7" isLive={true}>
+    <AgentCard title="Reputation Agent" icon={HeartHandshake} accentColor="#A855F7" isLive={true} error={error}>
       <div className="flex flex-col h-full justify-between">
 
         <div className="flex justify-between items-start mb-4">
@@ -58,11 +59,14 @@ export function ReputationAgent() {
           <p className="text-xs text-gray-300 italic line-clamp-2 leading-relaxed">
             {mostRecent ? `Rated ${mostRecent.rating}/5 by ${mostRecent.name}` : 'No ratings captured yet this week.'}
           </p>
+          {negativeCount > 0 && (
+            <p className="text-[10px] text-rose-400 font-medium mt-2">
+              {negativeCount} rated 3★ or below this week — routed to private feedback, not posted publicly.
+            </p>
+          )}
         </div>
 
-        <button className="w-full py-2 bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-medium rounded-lg transition-colors border border-white/10">
-          View Negative Feedback ({negativeCount})
-        </button>
+        <RunButton job="ratings" label="Send Rating Requests Now" className="bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10" />
 
       </div>
     </AgentCard>

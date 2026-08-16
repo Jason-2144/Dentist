@@ -1,0 +1,53 @@
+{
+  "name": "6a. Review + Reputation — Post-Visit Rating Request",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [ { "field": "hours", "hoursInterval": 2 } ] } }, "id": "trigger", "name": "Every 2 Hours", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-1200, 0] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/completed_visits/rows?queries[]={{encodeURIComponent('equal(\"rating_requested\",\"no\")')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "read-csv", "name": "Read Completed Visits (CSV)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-980, 0],
+      "notes": "Swap for PMS 'visit completed' event/API once live — that integration should write into this same completed_visits collection (patient_id as document $id)."
+    },
+    { "parameters": { "jsCode": "const body = $input.first().json;\nreturn (body.rows || []).map(doc => ({ json: { ...doc, patient_id: doc.$id } }));" }, "id": "parse-csv", "name": "Parse CSV to JSON", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-760, 0] },
+    { "parameters": { "jsCode": "return items.filter(i => i.json.rating_requested === 'no');" }, "id": "filter-unrequested", "name": "Filter: Rating Not Yet Requested", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-540, 0] },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.phone,\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"post_visit_rating_v1\",\n    \"language\": { \"code\": \"en\" },\n    \"components\": [ { \"type\": \"body\", \"parameters\": [ { \"type\": \"text\", \"text\": $json.name.split(' ')[0] } ] } ]\n  }\n} }}"
+      },
+      "id": "send-rating-request", "name": "Send Rating Request (How was your visit? 1-5)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-320, 0],
+      "notes": "Utility template ≈ ₹0.11/message. Same request also happens via the in-office kiosk (kiosk.html) for patients who'd rather rate before leaving."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/completed_visits/rows/{{$json.patient_id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"rating_requested\": \"yes\" } } }}"
+      },
+      "id": "mark-requested", "name": "Mark Rating Requested", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-100, 0]
+    }
+  ],
+  "connections": {
+    "Every 2 Hours": { "main": [[{ "node": "Read Completed Visits (CSV)", "type": "main", "index": 0 }]] },
+    "Read Completed Visits (CSV)": { "main": [[{ "node": "Parse CSV to JSON", "type": "main", "index": 0 }]] },
+    "Parse CSV to JSON": { "main": [[{ "node": "Filter: Rating Not Yet Requested", "type": "main", "index": 0 }]] },
+    "Filter: Rating Not Yet Requested": { "main": [[{ "node": "Send Rating Request (How was your visit? 1-5)", "type": "main", "index": 0 }]] },
+    "Send Rating Request (How was your visit? 1-5)": { "main": [[{ "node": "Mark Rating Requested", "type": "main", "index": 0 }]] }
+  }
+}

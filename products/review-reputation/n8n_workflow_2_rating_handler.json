@@ -1,0 +1,75 @@
+{
+  "name": "6b. Review + Reputation — Rating Handler (shared by WhatsApp + kiosk)",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "rating-submit", "responseMode": "responseNode", "options": {} }, "id": "webhook-in", "name": "Rating Submitted", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [-1200, 0], "notes": "Called by BOTH the WhatsApp reply parser (below) and kiosk.html directly, with a common shape: { phone, name, rating, source }." },
+    {
+      "parameters": {
+        "jsCode": "// If this came from the raw Meta webhook shape, normalize it; kiosk.html already posts the flat shape directly.\nconst body = $input.first().json;\nif (body.entry) {\n  const msg = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];\n  if (!msg) return [{ json: { skip: true } }];\n  const rating = parseInt((msg.text?.body || '').trim(), 10);\n  return [{ json: { phone: msg.from, rating, source: 'whatsapp' } }];\n}\nreturn [{ json: body }];"
+      },
+      "id": "normalize", "name": "Normalize Rating Payload", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-980, 0]
+    },
+    {
+      "parameters": { "conditions": { "options": { "leftValue": "", "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{$json.rating}}", "rightValue": 4, "operator": { "type": "number", "operation": "gte" } } ], "combinator": "and" } },
+      "id": "if-high-rating", "name": "IF: Rating >= 4", "type": "n8n-nodes-base.if", "typeVersion": 2.2, "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $json.phone, \"type\": \"text\", \"text\": { \"body\": \"So glad you had a great visit! Would you mind leaving us a quick Google review? \" + $env.GOOGLE_REVIEW_LINK + \"\\n\\nAlso — love your smile? Share this with a friend: they get 20% off their first visit, you get a free whitening kit. \" + $env.REFERRAL_LINK_BASE + $json.phone } } }}"
+      },
+      "id": "send-google-link", "name": "Send Google Review Link + Referral Coupon", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-520, -140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/ratings/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"phone\": $json.phone, \"name\": $json.name || null, \"rating\": $json.rating, \"outcome\": \"sent_to_google\", \"logged_at\": $now.toISO() } } }}"
+      },
+      "id": "log-positive", "name": "Log: Positive (Public)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-300, -140]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $env.FRONT_DESK_WHATSAPP_NUMBER, \"type\": \"text\", \"text\": { \"body\": \"⚠️ Low rating (\" + $json.rating + \"/5) from \" + ($json.name || $json.phone) + \" (\" + $json.phone + \"). NOT posted publicly — please follow up directly.\" } } }}"
+      },
+      "id": "escalate-manager", "name": "Escalate to Manager (Private)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-520, 140],
+      "notes": "1-3 star ratings never get a Google link — routed privately instead, matching the Figma flow."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/ratings/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"phone\": $json.phone, \"name\": $json.name || null, \"rating\": $json.rating, \"outcome\": \"escalated_to_manager\", \"logged_at\": $now.toISO() } } }}"
+      },
+      "id": "log-negative", "name": "Log: Negative (Private, Closed)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-300, 140]
+    },
+    { "parameters": { "respondWith": "noData", "options": {} }, "id": "respond-200", "name": "Respond 200 OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [-80, 0] }
+  ],
+  "connections": {
+    "Rating Submitted": { "main": [[{ "node": "Normalize Rating Payload", "type": "main", "index": 0 }]] },
+    "Normalize Rating Payload": { "main": [[{ "node": "IF: Rating >= 4", "type": "main", "index": 0 }]] },
+    "IF: Rating >= 4": { "main": [[{ "node": "Send Google Review Link + Referral Coupon", "type": "main", "index": 0 }], [{ "node": "Escalate to Manager (Private)", "type": "main", "index": 0 }]] },
+    "Send Google Review Link + Referral Coupon": { "main": [[{ "node": "Log: Positive (Public)", "type": "main", "index": 0 }]] },
+    "Log: Positive (Public)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Escalate to Manager (Private)": { "main": [[{ "node": "Log: Negative (Private, Closed)", "type": "main", "index": 0 }]] },
+    "Log: Negative (Private, Closed)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

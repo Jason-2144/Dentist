@@ -1,0 +1,64 @@
+{
+  "name": "0. Shared Booking Webhook (used by Phone + WhatsApp receptionist)",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "book-appointment", "responseMode": "responseNode", "options": {} },
+      "id": "webhook-in",
+      "name": "Booking Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 0],
+      "notes": "N8N_BOOKING_WEBHOOK_URL points here. Called from server.js (phone) and the WhatsApp receptionist workflow."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/appointments/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"source\": $json.source, \"patient_name\": $json.patient_name, \"phone\": $json.phone, \"reason\": $json.reason, \"preferred_day_time\": $json.preferred_day_time, \"new_or_returning\": $json.new_or_returning || null, \"has_insurance\": $json.has_insurance || null, \"status\": \"pending_confirmation\", \"no_show_count\": 0 } } }}"
+      },
+      "id": "write-booking",
+      "name": "Write Booking (Appwrite appointments)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-580, 0],
+      "notes": "Single source of truth ALL channels write to: phone (server.js), WhatsApp receptionist, treatment follow-up, website. This is the same appointments collection No-Show Recovery (Product 3) reads/updates by appointment_id ($id returned here)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $json.phone, \"type\": \"text\", \"text\": { \"body\": \"You're booked, \" + $json.patient_name + \"! We'll confirm your exact slot shortly.\" } } }}"
+      },
+      "id": "confirm-whatsapp",
+      "name": "Send WhatsApp Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-360, 0],
+      "notes": "Fires regardless of whether the booking came in by phone or WhatsApp — patient always gets a WhatsApp confirmation."
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ { \"ok\": true } }}", "options": {} },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-140, 0]
+    }
+  ],
+  "connections": {
+    "Booking Webhook": { "main": [[{ "node": "Write Booking (Appwrite appointments)", "type": "main", "index": 0 }]] },
+    "Write Booking (Appwrite appointments)": { "main": [[{ "node": "Send WhatsApp Confirmation", "type": "main", "index": 0 }]] },
+    "Send WhatsApp Confirmation": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] }
+  }
+}

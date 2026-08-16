@@ -19,10 +19,12 @@ export function Bottombar() {
         <CheckCircle2 size={16} className="text-emerald-500" />
         <span className="text-sm font-medium text-gray-300">All Agents Running</span>
         
-        <div className="hidden md:flex items-center space-x-1.5 ml-6 border-l border-white/10 pl-6">
+        <div className="hidden md:flex items-center space-x-1.5 ml-6 border-l border-white/10 pl-6" role="list" aria-label="Agent status">
           {agents.map((agent, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
+              role="listitem"
+              aria-label={`${agent.name}: running`}
               className="w-2.5 h-2.5 rounded-full"
               style={{ backgroundColor: agent.color }}
               title={agent.name}
@@ -31,8 +33,11 @@ export function Bottombar() {
         </div>
       </div>
 
-      <button className="flex items-center space-x-2 text-xs font-medium bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 px-3 py-1.5 rounded-md transition-colors border border-rose-500/20">
-        <PauseCircle size={14} />
+      <button
+        className="flex items-center space-x-2 text-xs font-medium bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 px-3 py-1.5 rounded-md transition-colors border border-rose-500/20"
+        title="Not yet wired to the automation service — pauses nothing yet"
+      >
+        <PauseCircle size={14} aria-hidden="true" />
         <span className="uppercase tracking-wider">Pause All</span>
       </button>
     </footer>

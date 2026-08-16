@@ -1,0 +1,6 @@
+appointment_id,patient_id,name,phone,appointment_datetime,status,no_show_count
+A101,P001,Rahul Sharma,+919810000001,2026-08-17T10:00:00+05:30,scheduled,0
+A102,P002,Priya Verma,+919810000002,2026-08-16T15:00:00+05:30,scheduled,2
+A103,P003,Amit Kumar,+919810000003,2026-08-15T09:00:00+05:30,scheduled,0
+A104,P004,Sneha Reddy,+919810000004,2026-08-14T18:00:00+05:30,scheduled,1
+A105,P005,Vikram Singh,+919810000005,2026-08-14T14:00:00+05:30,scheduled,0

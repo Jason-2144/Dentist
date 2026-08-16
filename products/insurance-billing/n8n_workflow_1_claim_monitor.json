@@ -1,0 +1,75 @@
+{
+  "name": "8a. Insurance + Billing — Claim Monitor",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [ { "field": "days", "daysInterval": 1, "triggerAtHour": 8 } ] } }, "id": "trigger-daily", "name": "Daily Trigger (8am)", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-1400, 0] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/claims/rows?queries[]={{encodeURIComponent('equal(\"status\",\"pending\")')}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] }
+      },
+      "id": "read-csv", "name": "Read Claims (CSV)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-1180, 0],
+      "notes": "Swap for pulls from each PMS's billing module (Dentrix/Curve/OpenDental) + accountant's ledger, upserted into this same claims collection (claim_id as document $id). This is the 'single dashboard' consolidation point across data sources."
+    },
+    { "parameters": { "jsCode": "const body = $input.first().json;\nreturn (body.rows || []).map(doc => ({ json: { ...doc, claim_id: doc.$id } }));" }, "id": "parse-csv", "name": "Parse CSV to JSON", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-960, 0] },
+    {
+      "parameters": {
+        "jsCode": "// Compute days since submission and bucket into follow-up tiers.\nconst now = Date.now();\nreturn items.filter(i => i.json.status === 'pending').map(item => {\n  const submitted = new Date(item.json.submitted_date).getTime();\n  const daysSince = Math.floor((now - submitted) / (1000*60*60*24));\n  let tier = null;\n  if (daysSince >= 28) tier = 'urgent_forgotten';\n  else if (daysSince >= 14) tier = 'needs_followup';\n  return { json: { ...item.json, days_since_submitted: daysSince, tier } };\n}).filter(i => i.json.tier);"
+      },
+      "id": "compute-tier", "name": "Compute Follow-Up Tier (14d / 28d)", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-740, 0]
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "leftValue": "", "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{$json.tier}}", "rightValue": "urgent_forgotten", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }
+      },
+      "id": "if-urgent", "name": "IF: Urgent (28+ days)", "type": "n8n-nodes-base.if", "typeVersion": 2.2, "position": [-520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $env.ACCOUNTANT_WHATSAPP_NUMBER, \"type\": \"text\", \"text\": { \"body\": \"🔴 URGENT (\" + $json.days_since_submitted + \" days): Claim \" + $json.claim_id + \" for \" + $json.patient_name + \" — ₹\" + $json.amount + \" — \" + $json.insurer + \" — still unpaid. Needs manual follow-up today.\" } } }}"
+      },
+      "id": "alert-urgent", "name": "Alert Accountant (Urgent)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-300, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $env.ACCOUNTANT_WHATSAPP_NUMBER, \"type\": \"text\", \"text\": { \"body\": \"🟡 Claim \" + $json.claim_id + \" for \" + $json.patient_name + \" — ₹\" + $json.amount + \" — \" + $json.insurer + \" — pending \" + $json.days_since_submitted + \" days. Worth a check-in.\" } } }}"
+      },
+      "id": "alert-followup", "name": "Alert Accountant (Follow-Up)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-300, 100]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/claims/rows/{{$json.claim_id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"days_since_submitted\": $json.days_since_submitted, \"tier\": $json.tier } } }}"
+      },
+      "id": "log-flagged", "name": "Log to Claims-Needing-Attention Sheet", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-80, 0],
+      "notes": "PATCHes the same claims collection the Insurance Agent dashboard card reads directly ('X claims need human attention', 'Rs Y in forgotten claims') — no separate log table needed since claim_id is the document $id."
+    }
+  ],
+  "connections": {
+    "Daily Trigger (8am)": { "main": [[{ "node": "Read Claims (CSV)", "type": "main", "index": 0 }]] },
+    "Read Claims (CSV)": { "main": [[{ "node": "Parse CSV to JSON", "type": "main", "index": 0 }]] },
+    "Parse CSV to JSON": { "main": [[{ "node": "Compute Follow-Up Tier (14d / 28d)", "type": "main", "index": 0 }]] },
+    "Compute Follow-Up Tier (14d / 28d)": { "main": [[{ "node": "IF: Urgent (28+ days)", "type": "main", "index": 0 }]] },
+    "IF: Urgent (28+ days)": { "main": [[{ "node": "Alert Accountant (Urgent)", "type": "main", "index": 0 }], [{ "node": "Alert Accountant (Follow-Up)", "type": "main", "index": 0 }]] },
+    "Alert Accountant (Urgent)": { "main": [[{ "node": "Log to Claims-Needing-Attention Sheet", "type": "main", "index": 0 }]] },
+    "Alert Accountant (Follow-Up)": { "main": [[{ "node": "Log to Claims-Needing-Attention Sheet", "type": "main", "index": 0 }]] }
+  }
+}

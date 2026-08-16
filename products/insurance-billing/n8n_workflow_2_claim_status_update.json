@@ -1,0 +1,76 @@
+{
+  "name": "8b. Insurance + Billing — Claim Status Update",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "claim-status-update", "responseMode": "responseNode", "options": {} }, "id": "webhook-in", "name": "Claim Status Update", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [-1000, 0], "notes": "Called manually by accountant (simple form/Zapier-style trigger) or by a PMS webhook when a claim's status changes. Body: { claim_id, new_status: 'paid'|'denied', paid_amount? }" },
+    {
+      "parameters": {
+        "conditions": { "options": { "leftValue": "", "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{$json.new_status}}", "rightValue": "paid", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }
+      },
+      "id": "if-paid", "name": "IF: Paid", "type": "n8n-nodes-base.if", "typeVersion": 2.2, "position": [-780, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/claims/rows/{{$json.claim_id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"status\": \"paid\" } } }}"
+      },
+      "id": "mark-paid", "name": "Mark Claim Paid", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-560, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/revenue_recovered/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"claim_id\": $json.claim_id, \"amount\": $json.paid_amount, \"recovered_at\": $now.toISO() } } }}"
+      },
+      "id": "log-recovered", "name": "Log Revenue Recovered", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-340, -100],
+      "notes": "Feeds a 'Rs X.XL recovered this month' figure — not yet wired into the Practice OS dashboard (Insurance Agent card currently shows open claims, not recovered revenue), but the data is captured and ready for when that's added."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/claims/rows/{{$json.claim_id}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"data\": { \"status\": \"denied\" } } }}"
+      },
+      "id": "mark-denied", "name": "Mark Claim Denied", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-560, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $env.ACCOUNTANT_WHATSAPP_NUMBER, \"type\": \"text\", \"text\": { \"body\": \"❌ Claim \" + $json.claim_id + \" was denied. Needs review — appeal or bill patient directly.\" } } }}"
+      },
+      "id": "alert-denied", "name": "Alert Accountant (Denied)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-340, 100]
+    },
+    { "parameters": { "respondWith": "noData", "options": {} }, "id": "respond-200", "name": "Respond 200 OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [-100, 0] }
+  ],
+  "connections": {
+    "Claim Status Update": { "main": [[{ "node": "IF: Paid", "type": "main", "index": 0 }]] },
+    "IF: Paid": { "main": [[{ "node": "Mark Claim Paid", "type": "main", "index": 0 }], [{ "node": "Mark Claim Denied", "type": "main", "index": 0 }]] },
+    "Mark Claim Paid": { "main": [[{ "node": "Log Revenue Recovered", "type": "main", "index": 0 }]] },
+    "Log Revenue Recovered": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] },
+    "Mark Claim Denied": { "main": [[{ "node": "Alert Accountant (Denied)", "type": "main", "index": 0 }]] },
+    "Alert Accountant (Denied)": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

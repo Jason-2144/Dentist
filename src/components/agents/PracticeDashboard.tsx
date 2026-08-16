@@ -10,7 +10,7 @@ import { BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
 // APPWRITE_SCHEMA.md "Gaps" section.
 export function PracticeDashboard() {
   return (
-    <AgentCard title="Practice Dashboard" icon={BarChart3} accentColor="#10B981" isLive={true}>
+    <AgentCard title="Practice Dashboard" icon={BarChart3} accentColor="#10B981" isLive={false} badge="Preview data">
       <div className="flex flex-col h-full justify-between space-y-4">
         
         <div className="flex flex-col space-y-1 mt-2">

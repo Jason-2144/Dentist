@@ -1,0 +1,43 @@
+{
+  "name": "3c. No-Show Recovery — Waitlist Fill",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "waitlist-fill", "responseMode": "responseNode", "options": {} }, "id": "webhook-in", "name": "Waitlist Fill Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [-1200, 0], "notes": "Called by workflow 3b when a slot cancels." },
+    { "parameters": { "operation": "read", "filePath": "/data/waitlist_mock.csv", "options": {} }, "id": "read-waitlist", "name": "Read Waitlist (CSV)", "type": "n8n-nodes-base.readBinaryFile", "typeVersion": 1, "position": [-980, 0] },
+    { "parameters": { "options": {} }, "id": "parse-csv", "name": "Parse CSV to JSON", "type": "n8n-nodes-base.spreadsheetFile", "typeVersion": 2, "position": [-760, 0] },
+    { "parameters": { "jsCode": "// Take top 3 by priority\nreturn items.sort((a,b) => Number(a.json.priority) - Number(b.json.priority)).slice(0, 3);" }, "id": "top3", "name": "Top 3 by Priority", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-540, 0] },
+    {
+      "parameters": {
+        "method": "POST", "url": "=https://graph.facebook.com/v20.0/{{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{$env.WHATSAPP_ACCESS_TOKEN}}" } ] },
+        "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ { \"messaging_product\": \"whatsapp\", \"to\": $json.phone, \"type\": \"text\", \"text\": { \"body\": \"A slot just opened up today — first to reply YES gets it!\" } } }}"
+      },
+      "id": "text-waitlist", "name": "Text Top 3 (First-to-Reply)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-320, 0],
+      "notes": "Sent to all 3 simultaneously via Loop Over Items (implicit in n8n when connected to a multi-item input)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APPWRITE_ENDPOINT}}/tablesdb/{{$env.APPWRITE_DATABASE_ID}}/tables/waitlist_offers/rows",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-Appwrite-Project", "value": "={{$env.APPWRITE_PROJECT_ID}}" },
+          { "name": "X-Appwrite-Key", "value": "={{$env.APPWRITE_API_KEY}}" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rowId\": \"unique()\", \"data\": { \"patient_id\": $json.patient_id, \"phone\": $json.phone, \"offered_at\": $now.toISO(), \"status\": \"offered\" } } }}"
+      },
+      "id": "log-offer", "name": "Log Offer", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-100, 0]
+    },
+    { "parameters": { "respondWith": "noData", "options": {} }, "id": "respond-200", "name": "Respond 200 OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [120, 0] }
+  ],
+  "connections": {
+    "Waitlist Fill Trigger": { "main": [[{ "node": "Read Waitlist (CSV)", "type": "main", "index": 0 }]] },
+    "Read Waitlist (CSV)": { "main": [[{ "node": "Parse CSV to JSON", "type": "main", "index": 0 }]] },
+    "Parse CSV to JSON": { "main": [[{ "node": "Top 3 by Priority", "type": "main", "index": 0 }]] },
+    "Top 3 by Priority": { "main": [[{ "node": "Text Top 3 (First-to-Reply)", "type": "main", "index": 0 }]] },
+    "Text Top 3 (First-to-Reply)": { "main": [[{ "node": "Log Offer", "type": "main", "index": 0 }]] },
+    "Log Offer": { "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]] }
+  }
+}

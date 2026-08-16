@@ -1,5 +1,6 @@
 import React from 'react';
 import { AgentCard } from '../AgentCard';
+import { RunButton } from '../RunButton';
 import { CalendarClock } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useCollection } from '../../lib/useCollection';
@@ -19,7 +20,7 @@ export function NoShowRecovery() {
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const { data: todaysAppts, loading } = useCollection<AppointmentRow>(COLLECTIONS.APPOINTMENTS, [
+  const { data: todaysAppts, loading, error } = useCollection<AppointmentRow>(COLLECTIONS.APPOINTMENTS, [
     Query.greaterThanEqual('appointment_datetime', todayStart.toISOString()),
     Query.lessThanEqual('appointment_datetime', todayEnd.toISOString()),
   ]);
@@ -36,7 +37,7 @@ export function NoShowRecovery() {
   const COLORS = ['#F59E0B', '#374151'];
 
   return (
-    <AgentCard title="No-Show Recovery" icon={CalendarClock} accentColor="#F59E0B" isLive={true}>
+    <AgentCard title="No-Show Recovery" icon={CalendarClock} accentColor="#F59E0B" isLive={true} error={error}>
       <div className="flex flex-col h-full justify-between">
 
         <div className="flex items-center mb-2">
@@ -75,9 +76,7 @@ export function NoShowRecovery() {
           ))}
         </div>
 
-        <button className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-amber-950 text-xs font-semibold rounded-lg transition-colors mt-auto">
-          Fill from Waitlist
-        </button>
+        <RunButton job="reminders" label="Send Reminders Now" className="bg-amber-500 hover:bg-amber-400 text-amber-950" />
       </div>
     </AgentCard>
   );
