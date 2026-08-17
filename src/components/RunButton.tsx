@@ -6,6 +6,7 @@ interface RunButtonProps {
   job: string;
   label: string;
   className: string;
+  style?: React.CSSProperties;
 }
 
 /**
@@ -16,7 +17,7 @@ interface RunButtonProps {
  * clicking it did nothing, which is worse than not having the button at all
  * for a paying customer. This makes the click real.
  */
-export function RunButton({ job, label, className }: RunButtonProps) {
+export function RunButton({ job, label, className, style }: RunButtonProps) {
   const [state, setState] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
@@ -34,6 +35,7 @@ export function RunButton({ job, label, className }: RunButtonProps) {
       <button
         onClick={handleClick}
         disabled={state === 'running'}
+        style={style}
         className={`w-full py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-wait ${className}`}
       >
         {state === 'running' && <Loader2 size={13} className="animate-spin" />}
@@ -44,7 +46,7 @@ export function RunButton({ job, label, className }: RunButtonProps) {
         </span>
       </button>
       {state === 'error' && message && (
-        <p className="text-[10px] text-rose-400 mt-1.5 text-center leading-snug">{message}</p>
+        <p className="text-[10px] text-rose-600 mt-1.5 text-center leading-snug">{message}</p>
       )}
     </div>
   );

@@ -9,5 +9,7 @@ export interface AgentCardProps {
   error?: string | null;
   /** Small uppercase tag next to the title, e.g. "Preview" for cards still on mock data. */
   badge?: string;
+  /** One human sentence, in the agent's own voice, summing up what it did — the card's shift note. */
+  note?: string;
   children: React.ReactNode;
 }

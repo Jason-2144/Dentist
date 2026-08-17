@@ -1,7 +1,7 @@
 
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  const BOOKING_WEBHOOK_URL = 'https://YOUR-N8N-HOST/webhook/book-appointment'; // same shared webhook as Products 2 & 5
+  const BOOKING_WEBHOOK_URL = 'https://YOUR-AUTOMATION-SERVICE-URL/webhook/booking'; // automation/DEPLOY.md — same endpoint Products 2 & 5 write to
 
   document.getElementById('bookForm').addEventListener('submit', async (e) => {
     e.preventDefault();

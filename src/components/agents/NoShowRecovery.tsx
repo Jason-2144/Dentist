@@ -14,6 +14,8 @@ interface AppointmentRow {
   status: 'pending_confirmation' | 'confirmed' | 'cancelled';
 }
 
+const ACCENT = '#D97B1F';
+
 export function NoShowRecovery() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -34,10 +36,16 @@ export function NoShowRecovery() {
     { name: 'Confirmed', value: confirmationRate },
     { name: 'Pending', value: 100 - confirmationRate },
   ];
-  const COLORS = ['#F59E0B', '#374151'];
+  const COLORS = [ACCENT, '#EDE3D0'];
+
+  const note = loading
+    ? undefined
+    : atRisk.length === 0
+    ? "Every seat today is confirmed — no empty chairs to chase."
+    : `Reaching out about ${atRisk.length} unconfirmed slot${atRisk.length === 1 ? '' : 's'} so they don't sit empty.`;
 
   return (
-    <AgentCard title="No-Show Recovery" icon={CalendarClock} accentColor="#F59E0B" isLive={true} error={error}>
+    <AgentCard title="No-Show Recovery" icon={CalendarClock} accentColor={ACCENT} isLive={true} error={error} note={note}>
       <div className="flex flex-col h-full justify-between">
 
         <div className="flex items-center mb-2">
@@ -52,31 +60,31 @@ export function NoShowRecovery() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-lg font-semibold text-gray-100">{loading ? '—' : `${confirmationRate}%`}</span>
+              <span className="text-lg font-semibold text-[var(--ink)]">{loading ? '—' : `${confirmationRate}%`}</span>
             </div>
           </div>
           <div className="ml-2">
-            <p className="text-xs text-gray-400 mb-1">Confirmation Rate</p>
-            <div className="inline-flex items-center px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-              <span className="text-[10px] text-amber-400 font-medium">{atRisk.length} slots at risk</span>
+            <p className="text-xs text-[var(--ink-muted)] mb-1">Confirmed for today</p>
+            <div className="inline-flex items-center px-2 py-1 rounded-full" style={{ backgroundColor: `${ACCENT}1A`, border: `1px solid ${ACCENT}33` }}>
+              <span className="w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse" style={{ backgroundColor: ACCENT }}></span>
+              <span className="text-[10px] font-medium" style={{ color: ACCENT }}>{atRisk.length} still to confirm</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white/5 rounded-lg p-3 mb-4 text-xs space-y-1">
-          {atRisk.length === 0 && !loading && <p className="text-gray-500">No slots at risk right now.</p>}
+        <div className="bg-[var(--surface-soft)] rounded-xl p-3 mb-4 text-xs space-y-1">
+          {atRisk.length === 0 && !loading && <p className="text-[var(--ink-muted)]">Nobody to chase right now.</p>}
           {atRisk.slice(0, 2).map((a) => (
             <div key={a.appointment_id} className="flex justify-between items-center">
-              <span className="text-gray-300 font-medium">
+              <span className="text-[var(--ink)] font-medium">
                 {new Date(a.appointment_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
-              <span className="text-gray-500">{a.reason}</span>
+              <span className="text-[var(--ink-muted)]">{a.reason}</span>
             </div>
           ))}
         </div>
 
-        <RunButton job="reminders" label="Send Reminders Now" className="bg-amber-500 hover:bg-amber-400 text-amber-950" />
+        <RunButton job="reminders" label="Send Reminders Now" className="text-white" style={{ backgroundColor: ACCENT }} />
       </div>
     </AgentCard>
   );

@@ -41,8 +41,9 @@
   </div>
 
 <script>
-  // Point this at your n8n instance's rating webhook (same one WhatsApp replies feed into).
-  const RATING_WEBHOOK_URL = 'https://YOUR-N8N-HOST/webhook/rating-submit';
+  // Point this at your deployed automation service (automation/DEPLOY.md) — same
+  // endpoint WhatsApp/SMS rating replies feed into.
+  const RATING_WEBHOOK_URL = 'https://YOUR-AUTOMATION-SERVICE-URL/webhook/rating';
 
   const stars = document.querySelectorAll('.star');
   const status = document.getElementById('status');

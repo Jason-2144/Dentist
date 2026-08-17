@@ -12,11 +12,13 @@ interface ReengagementRow {
   sent_at: string;
 }
 
-const STATUS_LABEL: Record<ReengagementRow['status'], { label: string; color: string }> = {
-  booked: { label: 'Booked', color: 'text-emerald-400 bg-emerald-400/10' },
-  referral_sent: { label: 'Shared Referral', color: 'text-purple-400 bg-purple-400/10' },
-  sent: { label: 'Sent', color: 'text-gray-400 bg-white/5' },
-  no_response: { label: 'No Response', color: 'text-gray-400 bg-white/5' },
+const ACCENT = '#3B6FE0';
+
+const STATUS_LABEL: Record<ReengagementRow['status'], { label: string; color: string; bg: string }> = {
+  booked: { label: 'Booked', color: '#2F8F5B', bg: '#2F8F5B1A' },
+  referral_sent: { label: 'Shared Referral', color: '#6B5CD6', bg: '#6B5CD61A' },
+  sent: { label: 'Sent', color: 'var(--ink-muted)', bg: 'var(--surface-soft)' },
+  no_response: { label: 'No Response', color: 'var(--ink-muted)', bg: 'var(--surface-soft)' },
 };
 
 export function ReEngagementAgent() {
@@ -31,26 +33,35 @@ export function ReEngagementAgent() {
     Query.greaterThanEqual('sent_at', startOfTodayISO()),
   ]);
 
+  const booked = allToday.filter((p) => p.status === 'booked').length;
+  const note = loading
+    ? undefined
+    : allToday.length === 0
+    ? "Haven't reached out to anyone yet today — starting with your longest-gone patients."
+    : booked > 0
+    ? `Reached ${allToday.length} patients who'd drifted away — ${booked} already rebooked.`
+    : `Reached ${allToday.length} patients who'd drifted away. No bookings yet — I'll keep trying.`;
+
   return (
-    <AgentCard title="Re-Engagement Agent" icon={Mail} accentColor="#3B82F6" isLive={true} error={error}>
+    <AgentCard title="Re-Engagement Agent" icon={Mail} accentColor={ACCENT} isLive={true} error={error} note={note}>
       <div className="flex flex-col h-full justify-between">
         <div className="mb-4">
-          <p className="text-3xl font-light text-gray-100 tracking-tight">
+          <p className="text-3xl font-light text-[var(--ink)] tracking-tight">
             {loading ? '—' : allToday.length}
           </p>
-          <p className="text-xs text-blue-400 font-medium">lapsed patients messaged today</p>
+          <p className="text-xs font-medium" style={{ color: ACCENT }}>lapsed patients messaged today</p>
         </div>
 
         <div className="space-y-2.5 mb-4">
           {data.length === 0 && !loading && (
-            <p className="text-xs text-gray-500">No messages sent yet today.</p>
+            <p className="text-xs text-[var(--ink-muted)]">No messages sent yet today.</p>
           )}
           {data.map((patient) => {
             const meta = STATUS_LABEL[patient.status] ?? STATUS_LABEL.sent;
             return (
-              <div key={patient.patient_id} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                <span className="text-gray-300 font-medium">{patient.name}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${meta.color}`}>
+              <div key={patient.patient_id} className="flex justify-between items-center text-sm border-b border-[var(--hairline)] pb-2 last:border-0 last:pb-0">
+                <span className="text-[var(--ink)] font-medium">{patient.name}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ color: meta.color, backgroundColor: meta.bg }}>
                   {meta.label}
                 </span>
               </div>
@@ -58,7 +69,7 @@ export function ReEngagementAgent() {
           })}
         </div>
 
-        <RunButton job="reengagement" label="Run Campaign Now" className="bg-blue-600 hover:bg-blue-500 text-white" />
+        <RunButton job="reengagement" label="Run Campaign Now" className="text-white" style={{ backgroundColor: ACCENT }} />
       </div>
     </AgentCard>
   );

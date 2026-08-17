@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, LayoutDashboard, Users, Calendar, MessageSquare, PhoneCall, FileText, Star, Settings } from 'lucide-react';
+import { HeartPulse, LayoutDashboard, Users, Calendar, MessageSquare, PhoneCall, FileText, Star, Settings } from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
@@ -8,44 +8,46 @@ interface SidebarProps {
 
 export function Sidebar({ activeView, setActiveView }: SidebarProps) {
   const menuItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Command Center' },
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Today' },
     { id: 'patients', icon: Users, label: 'Patients' },
     { id: 'schedule', icon: Calendar, label: 'Schedule' },
     { id: 'messages', icon: MessageSquare, label: 'Messages' },
     { id: 'calls', icon: PhoneCall, label: 'Call Logs' },
     { id: 'claims', icon: FileText, label: 'Claims' },
-    { id: 'reputation', icon: Star, label: 'Reputation' },
+    { id: 'reputation', icon: Star, label: 'Reviews' },
   ];
 
   return (
-    <aside className="w-16 lg:w-64 bg-[#0D1117] border-r border-white/5 h-full flex flex-col transition-all duration-300 z-20 shrink-0">
-      <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-white/5">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center shrink-0">
-          <Activity size={18} className="text-white" />
+    <aside className="w-16 lg:w-64 bg-[var(--surface)] border-r border-[var(--hairline)] h-full flex flex-col transition-all duration-300 z-20 shrink-0">
+      <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-[var(--hairline)]">
+        <div className="w-8 h-8 rounded-lg bg-[var(--brand)] flex items-center justify-center shrink-0">
+          <HeartPulse size={17} className="text-white" />
         </div>
-        <span className="ml-3 font-semibold text-gray-100 hidden lg:block tracking-tight text-lg">Practice OS</span>
+        <span className="ml-3 font-display font-semibold text-[var(--ink)] hidden lg:block tracking-tight text-lg">
+          Front Desk
+        </span>
       </div>
-      
-      <nav className="flex-1 py-6 flex flex-col space-y-2 px-3">
+
+      <nav className="flex-1 py-6 flex flex-col space-y-1 px-3">
         {menuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveView(item.id)}
-            className={`flex items-center px-3 py-2.5 rounded-lg transition-colors group ${
-              activeView === item.id 
-                ? 'bg-blue-500/10 text-blue-400' 
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+            className={`flex items-center px-3 py-2.5 rounded-xl transition-colors group ${
+              activeView === item.id
+                ? 'bg-[var(--brand)]/10 text-[var(--brand)]'
+                : 'text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-soft)]'
             }`}
           >
-            <item.icon size={20} className="shrink-0" />
+            <item.icon size={19} className="shrink-0" />
             <span className="ml-3 font-medium text-sm hidden lg:block">{item.label}</span>
           </button>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-white/5">
-        <button className="flex items-center px-2 py-2.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 w-full transition-colors">
-          <Settings size={20} className="shrink-0" />
+      <div className="p-4 border-t border-[var(--hairline)]">
+        <button className="flex items-center px-2 py-2.5 rounded-xl text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-soft)] w-full transition-colors">
+          <Settings size={19} className="shrink-0" />
           <span className="ml-3 font-medium text-sm hidden lg:block">Settings</span>
         </button>
       </div>
