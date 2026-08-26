@@ -23,6 +23,7 @@ export const TABLES = {
   REVENUE_RECOVERED: 'revenue_recovered',
   COMPLETED_VISITS: 'completed_visits',
   REMINDER_LOG: 'reminder_log',
+  PATIENTS: 'patients',
 } as const;
 // Back-compat alias — earlier drafts of this file called these "collections".
 export const COLLECTIONS = TABLES;

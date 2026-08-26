@@ -24,6 +24,7 @@ Use these same values for every n8n workflow's `APPWRITE_ENDPOINT` / `APPWRITE_P
 | `revenue_recovered` | auto-generated (append-only) | claim_id, amount (integer), recovered_at (datetime) — captured but not yet wired into a dashboard card |
 | `completed_visits` | `patient_id` | name, phone, visit_datetime, treatment, rating_requested (string: yes/no) — feeds the rating-request workflow, not read directly by the dashboard |
 | `reminder_log` | auto-generated (append-only) | appointment_id, patient_id, reminder_window, is_chronic_no_show (boolean), sent_at — audit trail, not read directly by the dashboard |
+| `patients` | `p_<digits-only phone>` | name (string), phone (string), last_visit_date (datetime), last_treatment (string), status (string: active/inactive) — the actual patient list `reengagement.js`'s `loadPatients()` reads from; populated by the dashboard's Patients page (`POST /patients/import`, upserts by phone so re-uploading a list never duplicates). This collection didn't exist before — every prior version of `loadPatients()` silently returned an empty list. |
 
 ## Which dashboard card reads which collection
 
@@ -37,6 +38,7 @@ Use these same values for every n8n workflow's `APPWRITE_ENDPOINT` / `APPWRITE_P
 | Website & Booking | `appointments`, filter `source = website`, `created_at >= today` | bookings-made-today only; live visitors / traffic source are **not** covered — see note below |
 | Insurance Agent | `claims`, filter `status = pending` | sum(amount) for open claims total, count where `tier = urgent_forgotten` |
 | Practice Dashboard | — | **not covered by any of the 8 products** — see note below |
+| Patients page | `patients`, all rows | staff-facing directory + import UI; writes go through `automation`'s `/patients/import`, never direct from the browser |
 
 ## Gaps — need a separate integration beyond the 8 products built
 

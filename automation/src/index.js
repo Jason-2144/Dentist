@@ -10,6 +10,7 @@
  *   POST /webhook/booking   -> shared booking endpoint (website form, etc.)
  *   POST /webhook/rating    -> kiosk rating widget
  *   POST /voice + /media-stream -> AI receptionist (Twilio <-> OpenAI)
+ *   POST /patients/import   -> dashboard's Patients page uploads a patient list here
  */
 
 import express from 'express';
@@ -18,6 +19,7 @@ import cron from 'node-cron';
 
 import { env, config, validateEnv } from './lib/env.js';
 import { parseInboundWhatsApp, parseInboundSMS, sendWhatsAppText } from './lib/messaging.js';
+import { upsertRow, TABLES } from './lib/appwrite.js';
 
 import * as reengagement from './products/reengagement.js';
 import * as noshow from './products/noshow.js';
@@ -154,6 +156,43 @@ app.post('/webhook/rating', async (req, res) => {
     console.error(`[webhook:rating] ${err.message}`);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// Dashboard's Patients page uploads a list here (CSV/paste, parsed client-side).
+// Upserts by phone so re-uploading the same list never creates duplicates.
+app.post('/patients/import', async (req, res) => {
+  const patients = Array.isArray(req.body?.patients) ? req.body.patients : [];
+  if (patients.length === 0) {
+    return res.status(400).json({ ok: false, error: 'Missing or empty patients array.' });
+  }
+
+  let imported = 0;
+  const errors = [];
+
+  for (const p of patients) {
+    const name = String(p.name || '').trim();
+    const phone = String(p.phone || '').trim();
+    if (!name || !phone) {
+      errors.push({ name, phone, error: 'Missing name or phone' });
+      continue;
+    }
+
+    const rowId = `p_${phone.replace(/[^a-zA-Z0-9]/g, '')}`.slice(0, 36);
+    try {
+      await upsertRow(TABLES.PATIENTS, rowId, {
+        name,
+        phone,
+        last_visit_date: p.last_visit_date || null,
+        last_treatment: p.last_treatment || '',
+        status: p.status || 'active',
+      });
+      imported++;
+    } catch (err) {
+      errors.push({ name, phone, error: err.message });
+    }
+  }
+
+  res.json({ ok: true, imported, total: patients.length, errors });
 });
 
 // Manual trigger for any campaign — useful for testing without waiting for cron.

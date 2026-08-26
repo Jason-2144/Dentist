@@ -16,16 +16,17 @@ import { createBooking } from './booking.js';
 const cfg = () => config?.products?.reengagement || {};
 
 /**
- * Patient source. Right now this reads the `patients` table in Appwrite;
- * swap this one function for a PMS export/API (Dentrix, Curve, OpenDental)
- * when a pilot clinic goes live and nothing else has to change.
+ * Patient source. Right now this reads the `patients` table in Appwrite —
+ * populated via the dashboard's Patients page (upload/paste a list, POSTs to
+ * /patients/import). Swap this one function for a PMS export/API (Dentrix,
+ * Curve, OpenDental) when a pilot clinic goes live and nothing else has to change.
  */
 async function loadPatients() {
   try {
-    return await listRows('patients', [Query.equal('status', 'active')]);
+    return await listRows(TABLES.PATIENTS, [Query.equal('status', 'active')]);
   } catch (err) {
     console.warn(`[reengagement] Could not read patients table (${err.message}). ` +
-                 'Create a "patients" table or point loadPatients() at your PMS.');
+                 'Import patients from the dashboard\'s Patients page first.');
     return [];
   }
 }

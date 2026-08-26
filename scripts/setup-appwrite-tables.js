@@ -116,6 +116,13 @@
       await col(t, 'boolean', 'is_chronic_no_show');
       await col(t, 'datetime', 'sent_at');
     }},
+    patients: { name: 'Patients', cols: async (t) => {
+      await col(t, 'string', 'name', { size: 128 });
+      await col(t, 'string', 'phone', { size: 32 });
+      await col(t, 'datetime', 'last_visit_date');
+      await col(t, 'string', 'last_treatment', { size: 128 });
+      await col(t, 'string', 'status', { size: 32 });
+    }},
   };
 
   for (const [id, def] of Object.entries(tables)) {
@@ -126,5 +133,5 @@
     console.log('Done:', id);
   }
 
-  console.log('%cAll 10 tables created. Refresh the Databases page to see them.', 'color: lime; font-weight: bold');
+  console.log('%cAll 11 tables created. Refresh the Databases page to see them.', 'color: lime; font-weight: bold');
 })();
