@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { client } from './lib/appwrite';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
-import { Bottombar } from './components/Bottombar';
 import { DashboardView } from './components/views/DashboardView';
 import { PatientsView } from './components/views/PatientsView';
 import { ScheduleView } from './components/views/ScheduleView';
@@ -15,6 +14,7 @@ import { BookOpen, Bookmark, FileText, Settings as SettingsIcon } from 'lucide-r
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Ping Appwrite Cloud connection
@@ -26,11 +26,11 @@ export default function App() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <DashboardView onNavigateToSchedule={() => setActiveView('schedule')} />;
+        return <DashboardView onNavigateToSchedule={() => setActiveView('schedule')} searchFilter={searchQuery} />;
       case 'schedule':
-        return <ScheduleView />;
+        return <ScheduleView searchFilter={searchQuery} />;
       case 'patients':
-        return <PatientsView />;
+        return <PatientsView searchFilter={searchQuery} />;
       case 'calls':
         return <CallLogsView />;
       case 'claims':
@@ -108,27 +108,36 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F4EFE6] p-2 md:p-3 flex items-center justify-center">
-      {/* Outer Rounded Container with Exact Dark Frame matching the screenshot */}
-      <div className="w-full h-[calc(100vh-16px)] md:h-[calc(100vh-24px)] max-w-[1720px] bg-[#FAF6EF] rounded-[34px] border-[2.5px] border-[#222327] shadow-2xl overflow-hidden flex flex-row">
-        {/* Floating Matte Dark Sidebar */}
-        <Sidebar activeView={activeView} setActiveView={setActiveView} />
+    <div className="h-screen w-full bg-[#FAF6EF] flex flex-row overflow-hidden font-sans">
+      {/* Sidebar with desktop in-flow and mobile off-canvas drawer */}
+      <Sidebar
+        activeView={activeView}
+        setActiveView={setActiveView}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
 
-        {/* Main Content Area */}
-        <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
-          {/* Topbar Search & Profile Icons */}
-          <Topbar onSearch={(q) => setSearchQuery(q)} />
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        {/* Topbar Search, Mobile Hamburger, & Profile Icons */}
+        <Topbar
+          onSearch={(q) => setSearchQuery(q)}
+          onFilterChange={(filter) => {
+            if (filter === 'Education') setActiveView('education');
+            if (filter === 'Patients') setActiveView('patients');
+            if (filter === 'Prescriptions') setActiveView('dashboard');
+            if (filter === 'Test results') setActiveView('schedule');
+          }}
+          onOpenSettings={() => setActiveView('settings')}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+        />
 
-          {/* Scrollable View Container */}
-          <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-2">
-            <div className="max-w-[1550px] mx-auto min-h-full">
-              {renderView()}
-            </div>
-          </main>
-
-          {/* Bottom Bar for Agent Status */}
-          <Bottombar />
-        </div>
+        {/* Scrollable View Container fitting all devices */}
+        <main className="flex-1 overflow-y-auto px-3 sm:px-6 lg:px-8 py-2 md:py-3">
+          <div className="w-full min-h-full">
+            {renderView()}
+          </div>
+        </main>
       </div>
     </div>
   );

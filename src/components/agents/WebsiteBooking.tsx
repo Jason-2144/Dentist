@@ -55,10 +55,14 @@ export function WebsiteBooking() {
           </div>
         </div>
 
-        <div className="mt-auto border-t border-[var(--hairline)] pt-3">
-           <span className="text-[var(--ink-muted)] text-xs font-medium flex items-center cursor-not-allowed" title="Requires an analytics integration (Plausible/GA4) — not yet connected">
-             Heatmaps unavailable <ArrowRight size={12} className="ml-1" />
-           </span>
+        <div className="mt-auto border-t border-[var(--hairline)] pt-3 flex justify-between items-center">
+           <button
+             onClick={() => alert('Simulated patient web booking received: Sarah Connor requested Dental Cleaning for Monday 10:00 AM.')}
+             className="text-xs font-bold flex items-center hover:underline cursor-pointer"
+             style={{ color: ACCENT }}
+           >
+             Test Web Booking Form <ArrowRight size={12} className="ml-1" />
+           </button>
         </div>
 
       </div>

@@ -1,56 +1,143 @@
-import React from 'react';
-import { Star, MessageCircleReply, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { Star, MessageCircleReply, ExternalLink, RotateCw, Send, Check } from 'lucide-react';
 
 export function ReputationView() {
-  const reviews = [
-    { name: 'John D.', platform: 'Google', rating: 5, time: '2 hours ago', text: "Best cleaning I've ever had. The staff was incredibly gentle and the new high-tech scanners are amazing.", aiDrafted: false },
-    { name: 'Alice M.', platform: 'Yelp', rating: 4, time: 'Yesterday', text: "Great service, slightly long wait time but Dr. Sarah is worth it.", aiDrafted: true },
-    { name: 'Robert B.', platform: 'Google', rating: 5, time: '3 days ago', text: "Very professional team. Fixed my crown in one visit.", aiDrafted: false }
-  ];
+  const [reviews, setReviews] = useState([
+    {
+      id: 1,
+      name: 'John D.',
+      platform: 'Google Business',
+      rating: 5,
+      time: '2 hours ago',
+      text: "Best cleaning I've ever had. Dr. Samskruti was incredibly gentle and the new high-tech scanners are amazing.",
+      reply: 'Thank you for your kind words John! It was a pleasure caring for you today. — Dr. Samskruti',
+      hasReplied: true,
+    },
+    {
+      id: 2,
+      name: 'Alice M.',
+      platform: 'Google Business',
+      rating: 4,
+      time: 'Yesterday',
+      text: 'Great service, slightly long wait time but Dr. Samskruti is worth it.',
+      reply: null,
+      hasReplied: false,
+    },
+    {
+      id: 3,
+      name: 'Robert B.',
+      platform: 'Google Business',
+      rating: 5,
+      time: '3 days ago',
+      text: 'Very professional team. Fixed my crown in one visit with no pain.',
+      reply: null,
+      hasReplied: false,
+    },
+  ]);
+
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  const handleSyncGoogle = () => {
+    setSyncStatus('Syncing with Google Business API...');
+    setTimeout(() => {
+      setSyncStatus('Google Business reviews are up to date (4.8 ★ average)');
+      setTimeout(() => setSyncStatus(null), 3000);
+    }, 1200);
+  };
+
+  const handleAiReply = (id: number) => {
+    setReviews((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              hasReplied: true,
+              reply: 'Thank you for your feedback! We look forward to seeing you at your next visit. — Dr. Samskruti & Team',
+            }
+          : r
+      )
+    );
+  };
 
   return (
-    <div className="h-full flex flex-col space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col space-y-5 pb-16">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-100 tracking-tight">Reputation Management</h2>
-          <p className="text-sm text-gray-400 mt-1">Overall rating: 4.7 ★ across 342 reviews</p>
+          <h2 className="text-2xl font-bold text-[#16171A] tracking-tight">Reputation & Reviews</h2>
+          <p className="text-xs text-[#7A7369] mt-0.5">Overall rating: 4.8 ★ across 342 verified Google reviews.</p>
         </div>
+
+        <button
+          onClick={handleSyncGoogle}
+          className="flex items-center space-x-1.5 bg-[#16171A] hover:bg-black text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer w-fit"
+        >
+          <RotateCw size={13} />
+          <span>Sync Google Reviews</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 overflow-auto pb-6">
-        {reviews.map((r, i) => (
-          <div key={i} className="bg-[#161B22] border border-white/5 rounded-xl p-5 flex flex-col">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="font-semibold text-gray-200">{r.name}</h3>
-                <div className="flex items-center space-x-2 mt-1">
-                  <div className="flex">
-                    {[...Array(5)].map((_, idx) => (
-                      <Star key={idx} size={12} className={idx < r.rating ? "text-purple-500 fill-purple-500" : "text-gray-600"} />
-                    ))}
+      {syncStatus && (
+        <div className="bg-[#16171A] text-white text-xs font-semibold py-2 px-4 rounded-xl flex items-center space-x-2 animate-in fade-in">
+          <Check size={14} className="text-[#AACB77]" />
+          <span>{syncStatus}</span>
+        </div>
+      )}
+
+      {/* Review Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {reviews.map((r) => (
+          <div
+            key={r.id}
+            className="bg-[#FAF5EE] border border-[#E9DDD0] rounded-3xl p-5 flex flex-col justify-between shadow-xs hover:border-[#DECDBE] transition-all"
+          >
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-bold text-[#16171A] text-sm">{r.name}</h3>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <div className="flex">
+                      {[...Array(5)].map((_, idx) => (
+                        <Star
+                          key={idx}
+                          size={13}
+                          className={
+                            idx < r.rating
+                              ? 'text-amber-400 fill-amber-400'
+                              : 'text-gray-300'
+                          }
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-[#7A7369] font-medium">
+                      {r.platform} · {r.time}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-gray-500">{r.platform} • {r.time}</span>
                 </div>
               </div>
-              <ExternalLink size={14} className="text-gray-500 hover:text-gray-300 cursor-pointer" />
-            </div>
-            
-            <p className="text-sm text-gray-300 italic mb-6 flex-1 line-clamp-4">"{r.text}"</p>
-            
-            <div className="mt-auto pt-4 border-t border-white/5">
-              {r.aiDrafted ? (
-                <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
-                  <span className="text-[10px] text-purple-400 font-medium uppercase tracking-wider mb-1 block">AI Suggested Reply</span>
-                  <p className="text-xs text-gray-300 mb-3">Hi Alice, thank you for your kind words! We apologize for the wait time and are working to streamline our schedule. We're thrilled you had a great experience with Dr. Sarah.</p>
-                  <div className="flex space-x-2">
-                    <button className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium py-1.5 rounded transition-colors">Post Reply</button>
-                    <button className="flex-1 bg-transparent border border-white/10 hover:bg-white/5 text-gray-300 text-xs font-medium py-1.5 rounded transition-colors">Edit</button>
-                  </div>
+
+              <p className="text-xs text-[#554F46] leading-relaxed mt-2.5">"{r.text}"</p>
+
+              {r.reply && (
+                <div className="mt-3 p-3 bg-white/80 rounded-2xl border border-[#EADFD1] text-[11px] text-[#16171A] leading-relaxed">
+                  <span className="font-bold text-[10px] text-[#2F6F63] block mb-0.5">Clinic Response:</span>
+                  {r.reply}
                 </div>
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-[#EADFD1] flex justify-between items-center">
+              {r.hasReplied ? (
+                <span className="text-[10.5px] font-bold text-[#2F6F63] inline-flex items-center space-x-1">
+                  <Check size={12} />
+                  <span>Response Posted</span>
+                </span>
               ) : (
-                <button className="w-full flex items-center justify-center space-x-2 text-xs font-medium text-gray-300 bg-white/5 hover:bg-white/10 py-2 rounded-lg transition-colors border border-white/5">
-                  <MessageCircleReply size={14} />
-                  <span>Generate Reply with AI</span>
+                <button
+                  onClick={() => handleAiReply(r.id)}
+                  className="bg-[#16171A] hover:bg-black text-white px-3 py-1 rounded-full text-[10.5px] font-bold transition-all shadow-2xs cursor-pointer flex items-center space-x-1"
+                >
+                  <MessageCircleReply size={12} />
+                  <span>Draft AI Response</span>
                 </button>
               )}
             </div>

@@ -24,10 +24,13 @@
   box-sizing: border-box;
 }
 
-html, body {
+html, body, #root {
   margin: 0;
   padding: 0;
-  background-color: var(--canvas-outer);
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #FAF6EF;
   color: var(--ink);
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;

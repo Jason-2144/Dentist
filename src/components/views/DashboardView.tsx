@@ -12,8 +12,12 @@ import {
   ChevronDown,
   Sparkles,
   Syringe,
+  Check,
+  X,
+  FileCheck2,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
-import { INITIAL_PATIENTS, PatientItem, TimelineEvent } from '../../lib/mockData';
+import { INITIAL_PATIENTS, INITIAL_TIMELINE, PatientItem, TimelineEvent } from '../../lib/mockData';
 import { AddEventModal } from '../AddEventModal';
 
 // AI Agent cards
@@ -28,14 +32,67 @@ import { InsuranceAgent } from '../agents/InsuranceAgent';
 
 interface DashboardViewProps {
   onNavigateToSchedule?: () => void;
+  searchFilter?: string;
 }
 
-export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
-  const [patients] = useState<PatientItem[]>(INITIAL_PATIENTS);
+export function DashboardView({ onNavigateToSchedule, searchFilter }: DashboardViewProps) {
+  const [patients, setPatients] = useState<PatientItem[]>(INITIAL_PATIENTS);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(INITIAL_PATIENTS[0].id);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>(INITIAL_TIMELINE);
+  const [selectedDay, setSelectedDay] = useState<number>(15);
+  const [monthIndex, setMonthIndex] = useState<number>(1); // 1 = May 2024
   const [isAddEventOpen, setIsAddEventOpen] = useState<boolean>(false);
 
+  // Filters & Interactivity state
+  const [patientFilter, setPatientFilter] = useState<'Today' | 'Urgent' | 'Routine' | 'All'>('Today');
+  const [showPatientFilterDropdown, setShowPatientFilterDropdown] = useState<boolean>(false);
+
+  const [timelineFilter, setTimelineFilter] = useState<'All' | 'Emergency' | 'Diagnostic' | 'Team'>('All');
+  const [showTimelineFilterDropdown, setShowTimelineFilterDropdown] = useState<boolean>(false);
+
+  const [syncedFeedback, setSyncedFeedback] = useState<boolean>(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState<boolean>(false);
+  const [refreshNotification, setRefreshNotification] = useState<string | null>(null);
+
+  const months = ['April 2024', 'May 2024', 'June 2024', 'July 2024'];
+
   const selectedPatient = patients.find((p) => p.id === selectedPatientId) || patients[0];
+
+  // Filtered patients based on search and category
+  const filteredPatients = patients.filter((p) => {
+    if (patientFilter === 'Urgent') return p.type.toLowerCase().includes('emergency');
+    if (patientFilter === 'Routine') return p.type.toLowerCase().includes('routine') || p.type.toLowerCase().includes('report');
+    if (searchFilter && searchFilter.trim().length > 0) {
+      const q = searchFilter.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q) || p.tags.some(t => t.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
+  // Filtered timeline based on category
+  const filteredTimeline = timeline.filter((evt) => {
+    if (timelineFilter === 'Emergency') return evt.type === 'emergency';
+    if (timelineFilter === 'Diagnostic') return evt.type === 'diagnostic';
+    if (timelineFilter === 'Team') return evt.type === 'team';
+    return true;
+  });
+
+  const handleAddEvent = (newEvent: TimelineEvent) => {
+    setTimeline((prev) => [...prev, newEvent]);
+    setRefreshNotification('Event added to schedule');
+    setTimeout(() => setRefreshNotification(null), 3000);
+  };
+
+  const handleRefreshTimeline = () => {
+    setTimeline([...INITIAL_TIMELINE]);
+    setRefreshNotification('Timeline refreshed');
+    setTimeout(() => setRefreshNotification(null), 2500);
+  };
+
+  const handleSyncToEhr = () => {
+    setSyncedFeedback(true);
+    setTimeout(() => setSyncedFeedback(false), 2200);
+  };
 
   const scrollToAiAgents = () => {
     document.getElementById('ai-command-center')?.scrollIntoView({ behavior: 'smooth' });
@@ -63,7 +120,7 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
           <div className="flex items-center justify-end -mb-1">
             <button
               onClick={scrollToAiAgents}
-              className="text-[12px] font-bold text-[#16171A] hover:underline"
+              className="text-[12px] font-bold text-[#16171A] hover:underline cursor-pointer"
             >
               Show all …
             </button>
@@ -82,7 +139,7 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
 
               <div>
                 <h3 className="text-[13.5px] font-bold text-[#16171A] tracking-tight">Patients:</h3>
-                <div className="flex items-baseline space-x-3 mt-1.5 text-[#16171A]">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-1.5 text-[#16171A]">
                   <div>
                     <span className="text-[16px] font-extrabold tracking-tight">14 pers</span>
                     <span className="text-[10px] font-medium text-[#655A46] ml-1">22-32 Y.O</span>
@@ -135,7 +192,7 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
 
               <div>
                 <h3 className="text-[13.5px] font-bold text-[#16171A] tracking-tight">Visits summary:</h3>
-                <div className="flex items-baseline space-x-3 mt-1.5 text-[#16171A]">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-1.5 text-[#16171A]">
                   <div>
                     <span className="text-[16px] font-extrabold tracking-tight">24 min</span>
                     <span className="text-[9px] font-bold text-[#6D4960] ml-1 uppercase">AVERAGE</span>
@@ -189,7 +246,7 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
 
               <div>
                 <h3 className="text-[13.5px] font-bold text-[#16171A] tracking-tight">By condition:</h3>
-                <div className="flex items-baseline space-x-3 mt-2 text-[#16171A]">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-2 text-[#16171A]">
                   <div>
                     <span className="text-[16px] font-extrabold tracking-tight">14 pers</span>
                     <span className="text-[9.5px] font-bold text-[#455B27] ml-1 uppercase">STABLE</span>
@@ -217,7 +274,7 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
 
               <div>
                 <h3 className="text-[13.5px] font-bold text-[#16171A] tracking-tight">Sessions:</h3>
-                <div className="flex items-baseline space-x-3 mt-2 text-[#16171A]">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-2 text-[#16171A]">
                   <div>
                     <span className="text-[16px] font-extrabold tracking-tight">03:45 h</span>
                     <span className="text-[9.5px] font-bold text-[#355773] ml-1 uppercase">IN CLINIC</span>
@@ -239,22 +296,47 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
             {/* Left: Patient's List */}
             <div className="space-y-2.5">
-              <div className="flex items-center justify-between px-1">
+              <div className="flex items-center justify-between px-1 relative">
                 <h3 className="text-[15px] font-bold text-[#16171A] tracking-tight">Patient's list</h3>
-                <div className="flex items-center space-x-1 bg-[#16171A] text-white text-[10.5px] font-medium px-2.5 py-0.5 rounded-full shadow-2xs cursor-pointer">
-                  <span>Today</span>
-                  <ChevronDown size={11} />
+                <div className="relative">
+                  <button
+                    onClick={() => setShowPatientFilterDropdown(!showPatientFilterDropdown)}
+                    className="flex items-center space-x-1 bg-[#16171A] text-white text-[10.5px] font-medium px-2.5 py-0.5 rounded-full shadow-2xs cursor-pointer hover:bg-black transition-colors"
+                  >
+                    <span>{patientFilter}</span>
+                    <ChevronDown size={11} />
+                  </button>
+
+                  {/* Filter Dropdown */}
+                  {showPatientFilterDropdown && (
+                    <div className="absolute right-0 top-6 w-28 bg-[#FAF6EF] rounded-xl border border-[#E9DDD0] shadow-lg p-1 z-30">
+                      {(['Today', 'Urgent', 'Routine', 'All'] as const).map((filterOpt) => (
+                        <button
+                          key={filterOpt}
+                          onClick={() => {
+                            setPatientFilter(filterOpt);
+                            setShowPatientFilterDropdown(false);
+                          }}
+                          className={`w-full text-left px-2 py-1 text-[11px] rounded-lg transition-colors ${
+                            patientFilter === filterOpt ? 'bg-[#16171A] text-white font-bold' : 'text-[#615A4F] hover:bg-black/5'
+                          }`}
+                        >
+                          {filterOpt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                {patients.map((p) => {
+                {filteredPatients.map((p) => {
                   const isSelected = p.id === selectedPatientId;
                   return (
                     <button
                       key={p.id}
                       onClick={() => setSelectedPatientId(p.id)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all text-left ${
+                      className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all text-left cursor-pointer ${
                         isSelected
                           ? 'bg-[#FDEAF4] border border-[#F28DC4]/50 shadow-2xs'
                           : 'bg-[#F5ECE1] hover:bg-[#EFE4D6] border border-transparent'
@@ -314,15 +396,14 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
 
                 {/* Medical Tags (Fever, Caught, Heart Burn) */}
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
-                  <span className="text-[10px] font-medium text-[#16171A] bg-[#F1A7D3]/40 border border-[#E899C5] px-2 py-0.5 rounded-full">
-                    Fever
-                  </span>
-                  <span className="text-[10px] font-medium text-[#16171A] bg-[#F1A7D3]/40 border border-[#E899C5] px-2 py-0.5 rounded-full">
-                    Caught
-                  </span>
-                  <span className="text-[10px] font-medium text-[#16171A] bg-[#F1A7D3]/40 border border-[#E899C5] px-2 py-0.5 rounded-full">
-                    Heart Burn
-                  </span>
+                  {selectedPatient.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="text-[10px] font-medium text-[#16171A] bg-[#F1A7D3]/40 border border-[#E899C5] px-2 py-0.5 rounded-full"
+                    >
+                      {t}
+                    </span>
+                  ))}
                 </div>
 
                 {/* Last Checked */}
@@ -330,10 +411,13 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
                   <div className="flex items-start text-[10.5px]">
                     <span className="font-medium text-[#69485E] w-24 shrink-0">Last Checked</span>
                     <span className="text-[#16171A] font-medium flex-1">
-                      Dr Everly on 21 April 2021
-                      <span className="block text-[#2F6FE0] font-mono text-[10px] mt-0.5 underline cursor-pointer">
-                        Prescription #2JPB3KTO
-                      </span>
+                      {selectedPatient.lastCheckedDoctor} on {selectedPatient.lastCheckedDate}
+                      <button
+                        onClick={() => setShowPrescriptionModal(true)}
+                        className="block text-[#2F6FE0] font-mono text-[10px] mt-0.5 underline cursor-pointer hover:text-blue-800"
+                      >
+                        Prescription {selectedPatient.prescriptionNo}
+                      </button>
                     </span>
                   </div>
                 </div>
@@ -343,7 +427,7 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
                   <div className="flex items-start text-[10.5px]">
                     <span className="font-medium text-[#69485E] w-24 shrink-0">Observation</span>
                     <span className="text-[#16171A] leading-snug flex-1">
-                      High fever and cough at normal hemoglobin levels.
+                      {selectedPatient.observation}
                     </span>
                   </div>
                 </div>
@@ -353,10 +437,31 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
                   <div className="flex items-start text-[10.5px]">
                     <span className="font-medium text-[#69485E] w-24 shrink-0">Prescription</span>
                     <span className="text-[#16171A] leading-snug whitespace-pre-line flex-1">
-                      Paracetmol - 2 times a day{'\n'}Dizepam - Day and Night before meal
+                      {selectedPatient.prescription}
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Action Button: Sync to EHR */}
+              <div className="pt-2">
+                <button
+                  onClick={handleSyncToEhr}
+                  className={`w-full py-2 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs flex items-center justify-center space-x-1.5 ${
+                    syncedFeedback
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-[#16171A] text-white hover:bg-black'
+                  }`}
+                >
+                  {syncedFeedback ? (
+                    <>
+                      <Check size={14} />
+                      <span>Saved to Patient EHR</span>
+                    </>
+                  ) : (
+                    <span>Sync to Patient Record</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -366,13 +471,23 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
         <div className="lg:col-span-4 flex flex-col space-y-4 pt-1">
           {/* Calendar Header with Navigation */}
           <div className="flex items-center justify-between px-2">
-            <button className="text-[#16171A] hover:text-black transition-colors font-bold text-sm">
+            <button
+              onClick={() => setMonthIndex((prev) => Math.max(0, prev - 1))}
+              disabled={monthIndex === 0}
+              className="text-[#16171A] hover:text-black transition-colors font-bold text-sm cursor-pointer disabled:opacity-30"
+              title="Previous month"
+            >
               ←
             </button>
             <div className="bg-[#F8C0E2] text-[#16171A] text-xs font-bold px-4 py-1 rounded-full shadow-2xs">
-              May 2024
+              {months[monthIndex]}
             </div>
-            <button className="text-[#16171A] hover:text-black transition-colors font-bold text-sm">
+            <button
+              onClick={() => setMonthIndex((prev) => Math.min(months.length - 1, prev + 1))}
+              disabled={monthIndex === months.length - 1}
+              className="text-[#16171A] hover:text-black transition-colors font-bold text-sm cursor-pointer disabled:opacity-30"
+              title="Next month"
+            >
               →
             </button>
           </div>
@@ -398,54 +513,86 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
                 <span className="text-transparent">0</span>
                 <span className="text-transparent">0</span>
                 <span className="text-transparent">0</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">1</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">2</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">3</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">4</span>
+                {[1, 2, 3, 4].map((d) => (
+                  <span
+                    key={d}
+                    onClick={() => setSelectedDay(d)}
+                    className={`py-0.5 cursor-pointer rounded-full transition-colors ${
+                      selectedDay === d ? 'bg-[#F094C6] text-white font-bold' : 'hover:bg-black/5'
+                    }`}
+                  >
+                    {d}
+                  </span>
+                ))}
                 <span className="text-[9px] text-[#A69C90]">W23</span>
               </div>
+
               {/* Row 2 */}
               <div className="grid grid-cols-8 gap-1 items-center">
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">6</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">7</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">8</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">9</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">10</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">11</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">12</span>
+                {[6, 7, 8, 9, 10, 11, 12].map((d) => (
+                  <span
+                    key={d}
+                    onClick={() => setSelectedDay(d)}
+                    className={`py-0.5 cursor-pointer rounded-full transition-colors ${
+                      selectedDay === d ? 'bg-[#F094C6] text-white font-bold' : 'hover:bg-black/5'
+                    }`}
+                  >
+                    {d}
+                  </span>
+                ))}
                 <span className="text-[9px] text-[#A69C90]">W24</span>
               </div>
-              {/* Row 3 (15 is pink circle!) */}
+
+              {/* Row 3 (15 default highlighted) */}
               <div className="grid grid-cols-8 gap-1 items-center">
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">13</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">14</span>
-                <span className="w-5 h-5 mx-auto rounded-full bg-[#F094C6] text-white font-bold flex items-center justify-center cursor-pointer shadow-2xs">
-                  15
-                </span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">16</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">17</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">18</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">19</span>
+                {[13, 14, 15, 16, 17, 18, 19].map((d) => {
+                  const isSelected = selectedDay === d;
+                  return (
+                    <span
+                      key={d}
+                      onClick={() => setSelectedDay(d)}
+                      className={`w-5 h-5 mx-auto rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-2xs ${
+                        isSelected
+                          ? 'bg-[#F094C6] text-white font-bold'
+                          : 'hover:bg-black/5'
+                      }`}
+                    >
+                      {d}
+                    </span>
+                  );
+                })}
                 <span className="text-[9px] text-[#A69C90]">W25</span>
               </div>
+
               {/* Row 4 */}
               <div className="grid grid-cols-8 gap-1 items-center">
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">20</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">21</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">22</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">23</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">24</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">25</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">26</span>
+                {[20, 21, 22, 23, 24, 25, 26].map((d) => (
+                  <span
+                    key={d}
+                    onClick={() => setSelectedDay(d)}
+                    className={`py-0.5 cursor-pointer rounded-full transition-colors ${
+                      selectedDay === d ? 'bg-[#F094C6] text-white font-bold' : 'hover:bg-black/5'
+                    }`}
+                  >
+                    {d}
+                  </span>
+                ))}
                 <span className="text-[9px] text-[#A69C90]">W26</span>
               </div>
+
               {/* Row 5 */}
               <div className="grid grid-cols-8 gap-1 items-center">
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">27</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">28</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">29</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">30</span>
-                <span className="py-0.5 cursor-pointer hover:bg-black/5 rounded-full">31</span>
+                {[27, 28, 29, 30, 31].map((d) => (
+                  <span
+                    key={d}
+                    onClick={() => setSelectedDay(d)}
+                    className={`py-0.5 cursor-pointer rounded-full transition-colors ${
+                      selectedDay === d ? 'bg-[#F094C6] text-white font-bold' : 'hover:bg-black/5'
+                    }`}
+                  >
+                    {d}
+                  </span>
+                ))}
                 <span className="text-transparent">0</span>
                 <span className="text-transparent">0</span>
                 <span className="text-[9px] text-[#A69C90]">W27</span>
@@ -457,137 +604,148 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
           <div className="flex items-center space-x-2 pt-1">
             <button
               onClick={() => setIsAddEventOpen(true)}
-              className="flex-1 bg-[#16171A] hover:bg-black text-white py-2 rounded-full text-xs font-bold transition-all shadow-xs text-center"
+              className="flex-1 bg-[#16171A] hover:bg-black text-white py-2 rounded-full text-xs font-bold transition-all shadow-xs text-center cursor-pointer flex items-center justify-center space-x-1.5"
             >
-              Add event
+              <Plus size={13} />
+              <span>Add event</span>
             </button>
             <button
-              className="w-8 h-8 rounded-full bg-[#F5ECE1] text-[#16171A] hover:bg-[#EFE4D6] flex items-center justify-center transition-colors shadow-2xs"
-              title="Refresh timeline"
+              onClick={handleRefreshTimeline}
+              className="w-8 h-8 rounded-full bg-[#F5ECE1] text-[#16171A] hover:bg-[#EFE4D6] flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
+              title="Reset timeline"
             >
               <RotateCw size={13} />
             </button>
             <button
               onClick={onNavigateToSchedule}
-              className="w-8 h-8 rounded-full bg-[#F5ECE1] text-[#16171A] hover:bg-[#EFE4D6] flex items-center justify-center transition-colors shadow-2xs"
+              className="w-8 h-8 rounded-full bg-[#F5ECE1] text-[#16171A] hover:bg-[#EFE4D6] flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
               title="Full Schedule & Agenda"
             >
               <FileSpreadsheet size={13} />
             </button>
           </div>
 
+          {/* Quick Notification Toast */}
+          {refreshNotification && (
+            <div className="bg-[#16171A] text-white text-[10px] font-semibold py-1.5 px-3 rounded-xl text-center animate-in fade-in">
+              {refreshNotification}
+            </div>
+          )}
+
           {/* Today's Timeline Section */}
           <div className="pt-1">
-            <h3 className="text-[17px] font-bold text-[#16171A]">May 15</h3>
+            <h3 className="text-[17px] font-bold text-[#16171A]">
+              May {selectedDay}
+            </h3>
             <div className="flex items-center justify-between text-[11px] font-medium text-[#7A7369] mt-1 pb-2 border-b border-[#EBE1D4]">
               <span>Time</span>
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 relative">
                 <span>Today's timeline</span>
-                <div className="flex items-center space-x-0.5 bg-[#16171A] text-white text-[9.5px] px-2 py-0.5 rounded-full ml-1">
-                  <span>All</span>
+                <button
+                  onClick={() => setShowTimelineFilterDropdown(!showTimelineFilterDropdown)}
+                  className="flex items-center space-x-0.5 bg-[#16171A] text-white text-[9.5px] px-2 py-0.5 rounded-full ml-1 cursor-pointer hover:bg-black"
+                >
+                  <span>{timelineFilter}</span>
                   <ChevronDown size={10} />
-                </div>
+                </button>
+
+                {/* Timeline Dropdown */}
+                {showTimelineFilterDropdown && (
+                  <div className="absolute right-0 top-6 w-28 bg-[#FAF6EF] rounded-xl border border-[#E9DDD0] shadow-lg p-1 z-30">
+                    {(['All', 'Emergency', 'Diagnostic', 'Team'] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => {
+                          setTimelineFilter(opt);
+                          setShowTimelineFilterDropdown(false);
+                        }}
+                        className={`w-full text-left px-2 py-1 text-[11px] rounded-lg transition-colors ${
+                          timelineFilter === opt ? 'bg-[#16171A] text-white font-bold' : 'text-[#615A4F] hover:bg-black/5'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Timeline slots */}
+            {/* Timeline slots dynamically rendered from timeline state */}
             <div className="mt-3 space-y-2.5 relative">
-              {/* Slot 1: 07:00 Emergency visit */}
-              <div className="flex items-start space-x-2.5">
-                <span className="text-[10px] font-semibold text-[#8C8479] w-8 shrink-0 pt-1">
-                  07:00
-                </span>
-                <div className="flex-1 bg-[#F5ECE1] rounded-2xl p-2.5">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-[#F8C0E2] text-[#E26AA8] flex items-center justify-center shrink-0 mt-0.5">
-                      <Stethoscope size={13} />
-                    </div>
-                    <div>
-                      <p className="text-[11.5px] font-bold text-[#16171A] leading-tight">Emergency visit</p>
-                      <p className="text-[9.5px] text-[#7A7268] mt-0.5">West camp, Room 312</p>
-                      <p className="text-[9px] font-medium text-[#9E9588] mt-0.5">07:00 - 07:30</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {filteredTimeline.map((evt) => {
+                const isEmergency = evt.type === 'emergency';
+                const isTeam = evt.type === 'team';
+                const isDiagnostic = evt.type === 'diagnostic';
 
-              {/* Slot 2: 07:30 Diagnostic test */}
-              <div className="flex items-start space-x-2.5">
-                <span className="text-[10px] font-semibold text-[#8C8479] w-8 shrink-0 pt-1">
-                  07:30
-                </span>
-                <div className="flex-1 bg-[#F5ECE1] rounded-2xl p-2.5">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-[#A2D2F7] text-[#2C6EA8] flex items-center justify-center shrink-0 mt-0.5">
-                      <Syringe size={13} />
+                return (
+                  <div key={evt.id} className="flex items-start space-x-2.5 relative">
+                    {/* Time Slot & Live Badge */}
+                    <div className="w-8 shrink-0 flex flex-col items-start pt-1">
+                      <span className="text-[10px] font-semibold text-[#8C8479]">{evt.timeLabel}</span>
+                      {evt.isLive && (
+                        <span className="bg-[#F094C6] text-white text-[8px] font-bold px-1 rounded-full mt-1 animate-pulse">
+                          08:12
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-[11.5px] font-bold text-[#16171A] leading-tight">Diagnostic test</p>
-                      <p className="text-[9.5px] text-[#7A7268] mt-0.5">East camp, Laboratory, floor 5</p>
-                      <p className="text-[9px] font-medium text-[#9E9588] mt-0.5">07:30 - 07:55</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Slot 3: 08:00 Team daily planning (WITH LIVE 08:12 MARKER) */}
-              <div className="flex items-start space-x-2.5 relative">
-                {/* 08:12 Pink Badge and Dashed Line */}
-                <div className="w-8 shrink-0 flex flex-col items-start pt-1">
-                  <span className="text-[10px] font-semibold text-[#8C8479]">08:00</span>
-                  <span className="bg-[#F094C6] text-white text-[8px] font-bold px-1 rounded-full mt-1">
-                    08:12
-                  </span>
-                </div>
+                    <div
+                      className={`flex-1 rounded-2xl p-2.5 border transition-all ${
+                        isTeam
+                          ? 'bg-[#F7F1DF] border-[#EADB9F]'
+                          : 'bg-[#F5ECE1] border-transparent hover:border-[#EAE0D3]'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                            isEmergency
+                              ? 'bg-[#F8C0E2] text-[#E26AA8]'
+                              : isTeam
+                              ? 'bg-[#FEE488] text-[#8C630D]'
+                              : 'bg-[#A2D2F7] text-[#2C6EA8]'
+                          }`}
+                        >
+                          {isEmergency && <Stethoscope size={13} />}
+                          {isDiagnostic && <Syringe size={13} />}
+                          {isTeam && <UsersIcon size={13} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11.5px] font-bold text-[#16171A] leading-tight">{evt.title}</p>
+                          <p className="text-[9.5px] text-[#7A7268] mt-0.5">{evt.location}</p>
 
-                <div className="flex-1 bg-[#F7F1DF] rounded-2xl p-2.5 border border-[#EADB9F]">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-[#FEE488] text-[#8C630D] flex items-center justify-center shrink-0 mt-0.5">
-                      <UsersIcon size={13} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11.5px] font-bold text-[#16171A] leading-tight">Team daily planning</p>
-                      <p className="text-[9.5px] text-[#7A7268] mt-0.5">East camp, Room 200</p>
+                          {/* Team Participants Avatars */}
+                          {evt.participants && evt.participants.length > 0 && (
+                            <div className="mt-1.5">
+                              <p className="text-[9px] font-medium text-[#7A7268]">Participants</p>
+                              <div className="flex items-center space-x-0.5 mt-0.5">
+                                <span className="w-4 h-4 rounded-full bg-[#82BAEC] text-white text-[7px] font-bold flex items-center justify-center">TY</span>
+                                <span className="w-4 h-4 rounded-full bg-[#48B8A6] text-white text-[7px] font-bold flex items-center justify-center">AB</span>
+                                <span className="w-4 h-4 rounded-full bg-[#3F9A6C] text-white text-[7px] font-bold flex items-center justify-center">NR</span>
+                                <span className="w-4 h-4 rounded-full bg-[#2D734E] text-white text-[7px] font-bold flex items-center justify-center">TY</span>
+                                <span className="w-4 h-4 rounded-full bg-[#F2BD35] text-white text-[7px] font-bold flex items-center justify-center">SS</span>
+                                <span className="w-4 h-4 rounded-full bg-[#EAB127] text-white text-[7px] font-bold flex items-center justify-center">+3</span>
+                              </div>
+                            </div>
+                          )}
 
-                      <p className="text-[9px] font-medium text-[#7A7268] mt-1.5">Participants</p>
-                      <div className="flex items-center space-x-0.5 mt-1">
-                        <span className="w-4 h-4 rounded-full bg-[#82BAEC] text-white text-[7px] font-bold flex items-center justify-center">TY</span>
-                        <span className="w-4 h-4 rounded-full bg-[#48B8A6] text-white text-[7px] font-bold flex items-center justify-center">AB</span>
-                        <span className="w-4 h-4 rounded-full bg-[#3F9A6C] text-white text-[7px] font-bold flex items-center justify-center">NR</span>
-                        <span className="w-4 h-4 rounded-full bg-[#2D734E] text-white text-[7px] font-bold flex items-center justify-center">TY</span>
-                        <span className="w-4 h-4 rounded-full bg-[#F2BD35] text-white text-[7px] font-bold flex items-center justify-center">SS</span>
-                        <span className="w-4 h-4 rounded-full bg-[#EAB127] text-white text-[7px] font-bold flex items-center justify-center">+3</span>
+                          <p className="text-[9px] font-medium text-[#9E9588] mt-1">
+                            {evt.startTime} - {evt.endTime}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-[9px] font-medium text-[#9E9588] mt-1.5">08:00 - 09:00</p>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Slot 4: 09:00 Emergency visit */}
-              <div className="flex items-start space-x-2.5">
-                <span className="text-[10px] font-semibold text-[#8C8479] w-8 shrink-0 pt-1">
-                  09:00
-                </span>
-                <div className="flex-1 bg-[#F5ECE1] rounded-2xl p-2.5">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-[#F8C0E2] text-[#E26AA8] flex items-center justify-center shrink-0 mt-0.5">
-                      <Stethoscope size={13} />
-                    </div>
-                    <div>
-                      <p className="text-[11.5px] font-bold text-[#16171A] leading-tight">Emergency visit</p>
-                      <p className="text-[9.5px] text-[#7A7268] mt-0.5">West camp, Room 312</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
 
             {/* View all details bottom button */}
             <div className="pt-3">
               <button
                 onClick={onNavigateToSchedule}
-                className="w-full py-2.5 bg-[#16171A] hover:bg-black text-white text-xs font-bold rounded-full transition-colors shadow-2xs text-center"
+                className="w-full py-2.5 bg-[#16171A] hover:bg-black text-white text-xs font-bold rounded-full transition-colors shadow-2xs text-center cursor-pointer"
               >
                 View all details
               </button>
@@ -598,7 +756,6 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
 
       {/* =========================================================================
           BOTTOM SECTION: AI AUTONOMOUS PRACTICE COMMAND CENTER
-          (Scrollable directly underneath as requested by the user!)
          ========================================================================= */}
       <div id="ai-command-center" className="pt-10 border-t border-[#E8DDCE]">
         {/* Section Header */}
@@ -641,10 +798,56 @@ export function DashboardView({ onNavigateToSchedule }: DashboardViewProps) {
       <AddEventModal
         isOpen={isAddEventOpen}
         onClose={() => setIsAddEventOpen(false)}
-        onAddEvent={(newEvent) => {
-          // Handled
-        }}
+        onAddEvent={handleAddEvent}
       />
+
+      {/* Digital Prescription Details Modal */}
+      {showPrescriptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-[#FAF6EF] rounded-3xl p-6 max-w-md w-full border border-[#E9DDD0] shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EADFD1]">
+              <div className="flex items-center space-x-2">
+                <FileCheck2 size={18} className="text-[#2F6FE0]" />
+                <h3 className="text-base font-bold text-[#16171A]">Prescription {selectedPatient.prescriptionNo}</h3>
+              </div>
+              <button
+                onClick={() => setShowPrescriptionModal(false)}
+                className="text-[#7A7369] hover:text-black"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3 text-xs">
+              <div>
+                <span className="text-[#8C8479] font-medium block">Patient</span>
+                <span className="text-[#16171A] font-bold text-sm">{selectedPatient.name} ({selectedPatient.code})</span>
+              </div>
+              <div>
+                <span className="text-[#8C8479] font-medium block">Diagnosed Condition</span>
+                <span className="text-[#16171A] font-semibold">{selectedPatient.observation}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-white/70 border border-[#EBE1D4]">
+                <span className="text-[#8C8479] font-medium block mb-1">Prescribed Regimen</span>
+                <p className="text-[#16171A] font-mono leading-relaxed whitespace-pre-line font-medium">
+                  {selectedPatient.prescription}
+                </p>
+              </div>
+              <div className="pt-2 text-[11px] text-[#7A7369] flex justify-between">
+                <span>Prescribing Doctor: <b>{selectedPatient.lastCheckedDoctor}</b></span>
+                <span>Date: <b>{selectedPatient.lastCheckedDate}</b></span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowPrescriptionModal(false)}
+              className="w-full py-2 bg-[#16171A] text-white text-xs font-bold rounded-xl hover:bg-black transition-colors"
+            >
+              Close Prescription
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
