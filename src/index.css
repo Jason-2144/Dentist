@@ -1,60 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --canvas: #EFEAE1;
+  --canvas-outer: #F7EFE4;
+  --canvas-inner: #FBF8F3;
+  --sidebar-bg: #151619;
   --surface: #FFFFFF;
-  --surface-soft: #F6F0E6;
-  --ink: #21261F;
-  --ink-muted: #6B6459;
-  --hairline: #E3DACB;
+  --surface-soft: #F6EEE3;
+  --ink: #181A1E;
+  --ink-muted: #7C766D;
+  --hairline: #ECE3D7;
   --brand: #2F6F63;
-  --accent: #FF7A45;
+  --accent-pink: #F28DC4;
+  --accent-pink-dark: #E26AA8;
+  --card-yellow: #FDE782;
+  --card-pink: #F8C3E5;
+  --card-green: #AACB77;
+  --card-blue: #A2D2F7;
+  --card-lavender: #FBEAF4;
 }
 
-html {
-  scroll-behavior: smooth;
+* {
+  box-sizing: border-box;
 }
 
-body {
-  background: var(--canvas);
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--canvas-outer);
   color: var(--ink);
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.font-display {
-  font-family: 'Fraunces', ui-serif, Georgia, serif;
-}
-
-/* Warm, quiet scrollbar instead of the default chrome-grey bar */
+/* Custom smooth scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--hairline);
-  border-radius: 999px;
-  border: 2px solid var(--canvas);
+  background: #E3D9CC;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #D3C6AC;
+  background: #CFC4B5;
 }
 
-/* Visible, warm focus ring for keyboard users — never removed, just restyled */
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: 6px;
+/* Hide scrollbar for clean UI where needed */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

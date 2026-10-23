@@ -1,65 +1,293 @@
-import React from 'react';
-import { Calendar as CalendarIcon, Clock, User, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  ChevronDown,
+  Plus,
+  RotateCw,
+  Edit2,
+  Video,
+  Activity,
+  Stethoscope,
+  Users,
+  FileText,
+  Clock,
+  MoreVertical,
+} from 'lucide-react';
+import { WEEKLY_SCHEDULE, ScheduleEvent } from '../../lib/mockData';
+import { AddEventModal } from '../AddEventModal';
 
 export function ScheduleView() {
-  const appointments = [
-    { time: '09:00 AM', duration: '60m', patient: 'Sarah Jenkins', type: 'New Patient Exam', confirmed: true, chair: 'Chair 1' },
-    { time: '10:00 AM', duration: '45m', patient: 'David Lopez', type: 'Hygiene', confirmed: true, chair: 'Chair 2' },
-    { time: '10:15 AM', duration: '90m', patient: 'Emma Wilson', type: 'Crown Prep', confirmed: false, chair: 'Chair 1', warning: 'Unconfirmed - AI sent 2nd text' },
-    { time: '11:30 AM', duration: '30m', patient: 'James Smith', type: 'Invisalign Check', confirmed: true, chair: 'Chair 3' },
-    { time: '01:00 PM', duration: '60m', patient: 'Michael Chen', type: 'Filling (2)', confirmed: true, chair: 'Chair 1' },
+  const [activeTab, setActiveTab] = useState<'today' | 'week' | 'month'>('week');
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [schedule, setSchedule] = useState<ScheduleEvent[]>(WEEKLY_SCHEDULE);
+
+  const days = [
+    { key: 'monday', label: 'MONDAY', date: '11/05', isToday: false },
+    { key: 'tuesday', label: 'TUESDAY', date: '12/05', isToday: false },
+    { key: 'wednesday', label: 'WEDNESDAY', date: '13/05', isToday: false },
+    { key: 'thursday', label: 'THU', date: '14/05', isToday: true },
+    { key: 'friday', label: 'FR', date: '15/05', isToday: false },
+    { key: 'saturday', label: 'SA', date: '16/05', isToday: false },
+    { key: 'sunday', label: 'SU', date: '17/05', isToday: false },
   ];
 
+  const timeSlots = ['07:00', '07:30', '08:00', '08:30', '09:00', '09:30'];
+
+  const handleJoinCall = (title: string) => {
+    alert(`Connecting to virtual clinic room for: ${title}`);
+  };
+
   return (
-    <div className="h-full flex flex-col space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="w-full space-y-6 pb-16">
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-100 tracking-tight">Today's Schedule</h2>
-          <p className="text-sm text-gray-400 mt-1">Oct 24, 2023 • 5 Appointments</p>
+          <h1 className="text-[28px] sm:text-[32px] font-bold text-[#181A1D] tracking-tight">
+            Stay up to date, Dr.Samskruti
+          </h1>
+          <div className="flex items-center space-x-2 mt-2">
+            <button className="flex items-center space-x-1.5 bg-[#181A1D] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs">
+              <span>May 11/05-17/05</span>
+              <ChevronDown size={13} />
+            </button>
+          </div>
         </div>
-        <div className="flex space-x-2">
-           <button className="px-4 py-2 bg-[#161B22] border border-white/5 rounded-lg text-sm text-gray-300 font-medium hover:bg-white/5 transition-colors">
-             Day
-           </button>
-           <button className="px-4 py-2 bg-[#0D1117] border border-transparent rounded-lg text-sm text-gray-500 font-medium hover:text-gray-300 transition-colors">
-             Week
-           </button>
+
+        {/* Action Controls & Segmented Toggle */}
+        <div className="flex items-center space-x-3 shrink-0">
+          <button
+            onClick={() => setIsAddEventOpen(true)}
+            className="flex items-center space-x-1.5 bg-[#181A1D] hover:bg-black text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm transition-all"
+          >
+            <Plus size={14} />
+            <span>Add event</span>
+          </button>
+          <button
+            onClick={() => setSchedule([...WEEKLY_SCHEDULE])}
+            className="w-8 h-8 rounded-full bg-[#EFE6DC] text-[#4A453E] hover:bg-[#DFD3C4] flex items-center justify-center transition-colors shadow-2xs"
+            title="Refresh"
+          >
+            <RotateCw size={13} />
+          </button>
+          <button
+            className="w-8 h-8 rounded-full bg-[#EFE6DC] text-[#4A453E] hover:bg-[#DFD3C4] flex items-center justify-center transition-colors shadow-2xs"
+            title="Edit"
+          >
+            <Edit2 size={13} />
+          </button>
+
+          {/* Today | Week | Month Toggle */}
+          <div className="flex items-center bg-[#EFE6DC] p-1 rounded-full border border-[#E2D6C7]">
+            <button
+              onClick={() => setActiveTab('today')}
+              className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+                activeTab === 'today' ? 'bg-[#181A1D] text-white shadow-xs' : 'text-[#6C6458]'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setActiveTab('week')}
+              className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+                activeTab === 'week' ? 'bg-[#181A1D] text-white shadow-xs' : 'text-[#6C6458]'
+              }`}
+            >
+              Week
+            </button>
+            <button
+              onClick={() => setActiveTab('month')}
+              className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
+                activeTab === 'month' ? 'bg-[#181A1D] text-white shadow-xs' : 'text-[#6C6458]'
+              }`}
+            >
+              Month
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="bg-[#161B22] border border-white/5 rounded-xl p-6 flex-1 overflow-auto">
-        <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-white/5">
-          {appointments.map((appt, i) => (
-             <div key={i} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#161B22] bg-blue-600 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 relative left-0 md:left-auto">
-                  <Clock size={16} />
+      {/* Multi-Column Weekly Schedule Grid */}
+      <div className="bg-[#FAF5EE] rounded-[28px] border border-[#E9DDD0] shadow-xs p-4 sm:p-6 overflow-x-auto">
+        <div className="min-w-[950px] relative">
+          {/* Live Pink Time Marker Line across the whole calendar (07:21) */}
+          <div className="absolute top-[82px] left-0 right-0 z-20 pointer-events-none flex items-center">
+            <span className="bg-[#F28DC4] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-full shadow-xs shrink-0 mr-1.5 ml-1">
+              07:21
+            </span>
+            <div className="h-px flex-1 border-t-2 border-dashed border-[#F28DC4]" />
+          </div>
+
+          {/* Grid Header */}
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-2 pb-4 border-b border-[#EADFD1] items-center text-center">
+            <div className="text-[11px] font-bold text-[#9E9588] text-left pl-1">
+              <span className="block text-[10px]">W</span>
+              <span>24</span>
+            </div>
+            {days.map((d) => (
+              <div key={d.key} className="flex justify-center">
+                {d.isToday ? (
+                  <div className="bg-[#181A1D] text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+                    {d.label} {d.date}
+                  </div>
+                ) : (
+                  <div className="text-xs font-bold text-[#6D655A]">
+                    <span className="block text-[10px] text-[#A3998C] font-semibold">{d.label}</span>
+                    <span>{d.date}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Grid Rows by Time Slot */}
+          <div className="relative divide-y divide-[#EADFD1]/60">
+            {timeSlots.map((time) => (
+              <div key={time} className="grid grid-cols-[60px_repeat(7,1fr)] gap-2 py-4 min-h-[110px] items-start">
+                {/* Time Column */}
+                <div className="text-[11px] font-bold text-[#7E766B] pt-1">
+                  {time}
                 </div>
-                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-white/5 bg-[#0D1117] shadow-sm ml-4 md:ml-0 hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-200">{appt.time} <span className="text-gray-500 font-normal">({appt.duration})</span></span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-medium ${appt.confirmed ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                      {appt.confirmed ? 'Confirmed' : 'Pending'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-300 mb-1">
-                    <User size={14} className="text-gray-500" />
-                    <span>{appt.patient}</span>
-                    <span className="text-gray-600">•</span>
-                    <span className="text-gray-400">{appt.chair}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">{appt.type}</p>
-                  
-                  {appt.warning && (
-                    <div className="mt-3 pt-3 border-t border-white/5 flex items-start space-x-2 text-xs text-amber-400">
-                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                      <span>{appt.warning}</span>
+
+                {/* Day Columns */}
+                {days.map((d) => {
+                  const eventsInSlot = schedule.filter(
+                    (s) => s.day === d.key && s.timeSlot === time
+                  );
+
+                  return (
+                    <div key={d.key} className="space-y-2.5 h-full">
+                      {eventsInSlot.map((evt) => (
+                        <div
+                          key={evt.id}
+                          className={`rounded-2xl p-3 border shadow-xs transition-all hover:shadow-md ${evt.bgClass} ${
+                            evt.type === 'team'
+                              ? 'border-[#EAD36F]'
+                              : evt.type === 'intern'
+                              ? 'border-[#CCE1F0]'
+                              : 'border-[#E5DDD2]'
+                          }`}
+                        >
+                          {/* Card Header with Icon & 3-dots */}
+                          <div className="flex items-start justify-between">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-white/70 shadow-2xs">
+                              {evt.type === 'emergency' && <Activity size={12} className="text-[#E26AA8]" />}
+                              {evt.type === 'diagnostic' && <Stethoscope size={12} className="text-[#4A90E2]" />}
+                              {evt.type === 'video' && <Video size={12} className="text-[#A26AE2]" />}
+                              {evt.type === 'team' && <Users size={12} className="text-[#D49826]" />}
+                              {evt.type === 'intern' && <Users size={12} className="text-[#3A7BB8]" />}
+                              {evt.type === 'followup' && <Clock size={12} className="text-[#E26AA8]" />}
+                            </div>
+                            <button className="text-gray-400 hover:text-black">
+                              <MoreVertical size={12} />
+                            </button>
+                          </div>
+
+                          {/* Title & Location */}
+                          <h4 className="text-[12px] font-bold text-[#181A1D] mt-2 leading-tight">
+                            {evt.title}
+                          </h4>
+                          {evt.location && (
+                            <p className="text-[10px] text-[#7A7369] mt-0.5 truncate">
+                              {evt.location}
+                            </p>
+                          )}
+                          <p className="text-[9.5px] font-semibold text-[#989083] mt-0.5">
+                            {evt.startTime} - {evt.endTime}
+                          </p>
+
+                          {/* Tag */}
+                          {evt.tag && (
+                            <span className="inline-block mt-2 text-[9px] font-bold text-[#2A5D8A] bg-[#CCE2F4] px-2 py-0.5 rounded-full">
+                              {evt.tag}
+                            </span>
+                          )}
+
+                          {/* Description */}
+                          {evt.description && (
+                            <p className="text-[10px] text-[#554F45] mt-1.5 leading-snug line-clamp-3">
+                              {evt.description}
+                            </p>
+                          )}
+
+                          {/* Optional Image */}
+                          {evt.image && (
+                            <img
+                              src={evt.image}
+                              alt="Article preview"
+                              className="w-full h-16 object-cover rounded-xl mt-2"
+                            />
+                          )}
+
+                          {/* Attachment (e.g. Agenda.pdf) */}
+                          {evt.attachment && (
+                            <div className="flex items-center space-x-1 text-[10px] font-bold text-[#8C630D] bg-white/80 px-2 py-1 rounded-lg mt-2">
+                              <FileText size={11} />
+                              <span>{evt.attachment}</span>
+                            </div>
+                          )}
+
+                          {/* Status Badge (e.g. In progress...) */}
+                          {evt.statusBadge && (
+                            <div className="mt-2 text-[10px] font-bold text-[#854570] bg-[#F8C3E5] px-2 py-1 rounded-xl text-center">
+                              {evt.statusBadge}
+                            </div>
+                          )}
+
+                          {/* Participants Avatars */}
+                          {evt.participants && evt.participants.length > 0 && (
+                            <div className="flex items-center space-x-1 mt-2">
+                              {evt.participants.map((p, i) => (
+                                <span
+                                  key={i}
+                                  className="w-4 h-4 rounded-full bg-[#181A1D] text-white text-[7.5px] font-bold flex items-center justify-center"
+                                >
+                                  {p}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Join Call Button */}
+                          {evt.hasJoinButton && (
+                            <button
+                              onClick={() => handleJoinCall(evt.title)}
+                              className="w-full mt-2.5 py-1 text-[11px] font-bold rounded-xl bg-[#8F949E] hover:bg-[#181A1D] text-white transition-colors"
+                            >
+                              Join
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-             </div>
-          ))}
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Add Event Modal */}
+      <AddEventModal
+        isOpen={isAddEventOpen}
+        onClose={() => setIsAddEventOpen(false)}
+        onAddEvent={(newEvent) => {
+          setSchedule((prev) => [
+            ...prev,
+            {
+              id: `sched_${Date.now()}`,
+              day: 'thursday',
+              dateStr: '14/05',
+              timeSlot: '08:00',
+              startTime: newEvent.startTime,
+              endTime: newEvent.endTime,
+              title: newEvent.title,
+              location: newEvent.location,
+              type: newEvent.type,
+              bgClass: 'bg-[#F5F2ED]',
+            },
+          ]);
+        }}
+      />
     </div>
   );
 }

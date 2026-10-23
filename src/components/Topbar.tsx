@@ -1,79 +1,90 @@
-import React, { useEffect, useState } from 'react';
-import { Bell, Search, UserCircle } from 'lucide-react';
-import { PRACTICE_NAME, STAFF_NAME } from '../lib/config';
+import React, { useState } from 'react';
+import { Search, User, Bell, Settings } from 'lucide-react';
 
-function formatDate(d: Date) {
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+interface TopbarProps {
+  onSearch?: (query: string) => void;
+  onFilterChange?: (filter: string) => void;
 }
 
-function greeting(d: Date) {
-  const h = d.getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
+export function Topbar({ onSearch, onFilterChange }: TopbarProps) {
+  const [activeFilter, setActiveFilter] = useState('Patients');
+  const [searchVal, setSearchVal] = useState('Lis');
 
-export function Topbar() {
-  // Refreshes at local midnight instead of freezing on whatever date the tab
-  // happened to load — this dashboard is meant to stay open on a front-desk
-  // screen for days at a time.
-  const [now, setNow] = useState(() => new Date());
+  const filters = ['Patients', 'Education', 'Prescriptions', 'Test results'];
 
-  useEffect(() => {
-    const msUntilMidnight = new Date().setHours(24, 0, 0, 0) - Date.now();
-    const timeout = setTimeout(() => setNow(new Date()), msUntilMidnight + 1000);
-    return () => clearTimeout(timeout);
-  }, [now]);
+  const handleFilterClick = (f: string) => {
+    setActiveFilter(f);
+    onFilterChange?.(f);
+  };
 
-  const firstName = STAFF_NAME.split(' ')[0];
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchVal(e.target.value);
+    onSearch?.(e.target.value);
+  };
 
   return (
-    <header className="h-16 border-b border-[var(--hairline)] bg-[var(--surface)]/90 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10">
-      <div>
-        <h1 className="font-display text-xl font-semibold text-[var(--ink)] tracking-tight">
-          {greeting(now)}, {firstName} 👋
-        </h1>
-        <p className="text-xs text-[var(--ink-muted)] font-medium mt-0.5">
-          {PRACTICE_NAME} · {formatDate(now)}
-        </p>
+    <header className="w-full flex items-center justify-between pt-3 pb-2 px-6 shrink-0 gap-4">
+      {/* Pill Search Bar with Inline Filters */}
+      <div className="flex-1 max-w-[540px]">
+        <div className="flex items-center bg-[#F6EFE5] border border-[#EBE1D4] rounded-full px-3.5 py-1.5 shadow-2xs">
+          {/* Pink search circle icon */}
+          <div className="w-6 h-6 rounded-full bg-[#F094C6]/20 text-[#E26AA8] flex items-center justify-center shrink-0 mr-2.5">
+            <Search size={13} strokeWidth={2.5} />
+          </div>
+
+          <div className="flex-1 flex items-center min-w-0">
+            <input
+              type="text"
+              value={searchVal}
+              onChange={handleSearchChange}
+              placeholder="Search..."
+              className="bg-transparent border-none outline-none text-[13px] text-[#16171A] font-medium w-24 shrink-0 placeholder:text-[#A1988C]"
+            />
+
+            {/* Scope Filter Tags */}
+            <div className="flex items-center space-x-1 shrink-0 ml-auto">
+              <span className="text-[11px] font-semibold text-[#8B8479] mr-1">In:</span>
+              {filters.map((f) => {
+                const isSelected = activeFilter === f;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => handleFilterClick(f)}
+                    className={`text-[10.5px] font-medium px-2 py-0.5 rounded-full transition-all ${
+                      isSelected
+                        ? 'bg-[#16171A] text-white shadow-2xs font-semibold'
+                        : 'border border-[#DECDBE] text-[#615A4F] hover:border-[#16171A]'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center space-x-6">
-        <div className="hidden md:flex items-center bg-[var(--surface-soft)] rounded-full px-4 py-1.5 border border-[var(--hairline)]">
-          <Search size={14} className="text-[var(--ink-muted)]" aria-hidden="true" />
-          <label htmlFor="dashboard-search" className="sr-only">Search patients, claims</label>
-          <input
-            id="dashboard-search"
-            type="text"
-            placeholder="Find a patient, claim…"
-            className="bg-transparent border-none outline-none text-sm text-[var(--ink)] ml-2 w-48 placeholder-[var(--ink-muted)]"
-          />
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <button
-            className="relative p-2 text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors"
-            aria-label="Notifications"
-            title="Notifications (coming soon)"
-          >
-            <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--accent)] rounded-full border border-[var(--surface)]"></span>
-          </button>
-          <div className="h-6 w-px bg-[var(--hairline)]"></div>
-          <button
-            className="flex items-center space-x-2 text-[var(--ink)] hover:text-[var(--brand)] transition-colors"
-            aria-label="Account menu"
-            title="Account settings (coming soon)"
-          >
-            <UserCircle size={24} aria-hidden="true" />
-            <span className="text-sm font-medium hidden sm:block">{STAFF_NAME}</span>
-          </button>
-        </div>
+      {/* Right Circular Dark Buttons */}
+      <div className="flex items-center space-x-2 shrink-0">
+        <button
+          className="w-9 h-9 rounded-full bg-[#16171A] text-white flex items-center justify-center hover:bg-black transition-colors shadow-2xs"
+          title="Dr. Samskruti's Profile"
+        >
+          <User size={15} strokeWidth={2} />
+        </button>
+        <button
+          className="w-9 h-9 rounded-full bg-[#16171A] text-white flex items-center justify-center hover:bg-black transition-colors shadow-2xs relative"
+          title="Notifications"
+        >
+          <Bell size={15} strokeWidth={2} />
+        </button>
+        <button
+          className="w-9 h-9 rounded-full bg-[#16171A] text-white flex items-center justify-center hover:bg-black transition-colors shadow-2xs"
+          title="Settings"
+        >
+          <Settings size={15} strokeWidth={2} />
+        </button>
       </div>
     </header>
   );
