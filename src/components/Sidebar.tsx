@@ -3,9 +3,6 @@ import {
   LayoutGrid,
   Calendar,
   Users,
-  PieChart,
-  Stethoscope,
-  Bookmark,
   MessageCircle,
   CircleDollarSign,
   FileText,
@@ -14,6 +11,15 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  PhoneCall,
+  RefreshCw,
+  Zap,
+  TrendingUp,
+  ClipboardCheck,
+  Star,
+  Globe,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,9 +37,17 @@ export function Sidebar({ activeView, setActiveView, mobileOpen, onCloseMobile }
     { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
     { id: 'patients', label: 'Patients', icon: Users },
-    { id: 'statistics', label: 'Statistics & reports', icon: PieChart },
-    { id: 'education', label: 'Education', icon: Stethoscope },
-    { id: 'articles', label: 'My articles', icon: Bookmark },
+  ];
+
+  const aiAgentsNav = [
+    { id: 'agent-receptionist', label: 'AI Receptionist', icon: PhoneCall, dotColor: '#1B8C7A' },
+    { id: 'agent-reengagement', label: 'Re-engagement', icon: RefreshCw, dotColor: '#3B6FE0' },
+    { id: 'agent-noshow', label: 'No-Show Recovery', icon: Zap, dotColor: '#D97706' },
+    { id: 'agent-analytics', label: 'Practice Performance', icon: TrendingUp, dotColor: '#8C1B5A' },
+    { id: 'agent-treatment', label: 'Treatment Follow-up', icon: ClipboardCheck, dotColor: '#2F8F5B' },
+    { id: 'agent-reputation', label: 'Reputation & Reviews', icon: Star, dotColor: '#F59E0B' },
+    { id: 'agent-booking', label: 'Website 24/7 Booking', icon: Globe, dotColor: '#2563EB' },
+    { id: 'agent-insurance', label: 'Insurance & Claims', icon: ShieldCheck, dotColor: '#059669' },
   ];
 
   const toolsNav = [
@@ -51,51 +65,55 @@ export function Sidebar({ activeView, setActiveView, mobileOpen, onCloseMobile }
   const sidebarContent = (
     <aside
       className={`${
-        isCollapsed ? 'w-[68px] p-2.5' : 'w-[200px] lg:w-[215px] p-4'
-      } shrink-0 bg-[#16171A] text-[#9E9CA3] rounded-[26px] flex flex-col justify-between select-none shadow-xl border border-black/20 h-full transition-all duration-300 ease-in-out`}
+        isCollapsed ? 'w-[68px] p-2' : 'w-[215px] lg:w-[230px] p-3.5'
+      } shrink-0 bg-[#16171A] text-[#9E9CA3] rounded-[26px] flex flex-col justify-between select-none shadow-xl border border-black/20 h-full transition-all duration-300 ease-in-out overflow-hidden`}
     >
-      <div>
-        {/* Logo Header */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} pb-6 pt-1 px-1`}>
-          {!isCollapsed && (
-            <span className="text-[20px] font-bold text-white tracking-tight font-sans">
-              DentistOS
-            </span>
-          )}
+      {/* Top Header (Pinned) */}
+      <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} pb-3 pt-1 px-1 shrink-0 border-b border-white/5`}>
+        {!isCollapsed && (
+          <span className="text-[19px] font-bold text-white tracking-tight font-sans">
+            DentistOS
+          </span>
+        )}
 
-          <div className="flex items-center space-x-1.5">
-            {/* Desktop collapse toggle */}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden md:flex w-5 h-5 rounded-full bg-[#F094C6] text-white items-center justify-center hover:bg-[#E26AA8] transition-transform hover:scale-110 shadow-xs cursor-pointer"
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {isCollapsed ? (
-                <ChevronRight size={13} strokeWidth={2.8} />
-              ) : (
-                <ChevronLeft size={13} strokeWidth={2.8} />
-              )}
-            </button>
+        <div className="flex items-center space-x-1.5">
+          {/* Desktop collapse toggle */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden md:flex w-5 h-5 rounded-full bg-[#F094C6] text-white items-center justify-center hover:bg-[#E26AA8] transition-transform hover:scale-110 shadow-xs cursor-pointer"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight size={13} strokeWidth={2.8} />
+            ) : (
+              <ChevronLeft size={13} strokeWidth={2.8} />
+            )}
+          </button>
 
-            {/* Mobile close button */}
-            <button
-              onClick={onCloseMobile}
-              className="md:hidden w-6 h-6 rounded-full bg-white/10 text-white flex items-center justify-center"
-            >
-              <X size={14} />
-            </button>
-          </div>
+          {/* Mobile close button */}
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden w-6 h-6 rounded-full bg-white/10 text-white flex items-center justify-center cursor-pointer"
+          >
+            <X size={14} />
+          </button>
         </div>
+      </div>
 
+      {/* Scrollable Navigation Body */}
+      <div
+        className="flex-1 overflow-y-auto space-y-4 my-2 pr-0.5"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         {/* General Section */}
         <div>
           {!isCollapsed && (
-            <p className="text-[11px] font-semibold text-[#5B5A60] tracking-wider px-2.5 mb-2 uppercase">
+            <p className="text-[10px] font-bold text-[#5B5A60] tracking-wider px-2 mb-1.5 uppercase">
               General
             </p>
           )}
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {generalNav.map((item) => {
               const Icon = item.icon;
               const isActive = activeView === item.id;
@@ -105,15 +123,15 @@ export function Sidebar({ activeView, setActiveView, mobileOpen, onCloseMobile }
                   onClick={() => handleNavClick(item.id)}
                   title={isCollapsed ? item.label : undefined}
                   className={`w-full flex items-center ${
-                    isCollapsed ? 'justify-center px-0' : 'space-x-3 px-2.5'
-                  } py-2 rounded-xl text-[12.5px] font-medium transition-all cursor-pointer ${
+                    isCollapsed ? 'justify-center px-0' : 'space-x-2.5 px-2.5'
+                  } py-1.5 rounded-xl text-[12px] font-medium transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-white/10 text-white font-semibold'
+                      ? 'bg-white/10 text-white font-semibold shadow-2xs'
                       : 'text-[#8E8D93] hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <Icon
-                    size={17}
+                    size={16}
                     strokeWidth={isActive ? 2.2 : 1.8}
                     className={isActive ? 'text-white' : 'text-[#8E8D93]'}
                   />
@@ -124,14 +142,62 @@ export function Sidebar({ activeView, setActiveView, mobileOpen, onCloseMobile }
           </div>
         </div>
 
-        {/* Tools Section */}
-        <div className="mt-5">
+        {/* AI Autonomous Agents Section (All 8 Agents) */}
+        <div>
           {!isCollapsed && (
-            <p className="text-[11px] font-semibold text-[#5B5A60] tracking-wider px-2.5 mb-2 uppercase">
+            <div className="flex items-center justify-between px-2 mb-1.5">
+              <span className="text-[10px] font-bold text-[#6D6B73] tracking-wider uppercase flex items-center space-x-1.5">
+                <Sparkles size={11} className="text-[#F094C6]" />
+                <span>AI Agents (8)</span>
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="8 Agents Live" />
+            </div>
+          )}
+          <div className="space-y-0.5">
+            {aiAgentsNav.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  title={isCollapsed ? item.label : undefined}
+                  className={`w-full flex items-center ${
+                    isCollapsed ? 'justify-center px-0' : 'justify-between px-2.5'
+                  } py-1.5 rounded-xl text-[12px] font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-white/10 text-white font-semibold shadow-2xs'
+                      : 'text-[#8E8D93] hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <Icon
+                      size={15}
+                      strokeWidth={isActive ? 2.2 : 1.8}
+                      className={isActive ? 'text-white' : 'text-[#8E8D93]'}
+                    />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </div>
+                  {!isCollapsed && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0 ml-1.5"
+                      style={{ backgroundColor: item.dotColor }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tools Section */}
+        <div>
+          {!isCollapsed && (
+            <p className="text-[10px] font-bold text-[#5B5A60] tracking-wider px-2 mb-1.5 uppercase">
               Tools
             </p>
           )}
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {toolsNav.map((item) => {
               const Icon = item.icon;
               const isActive = activeView === item.id;
@@ -141,15 +207,15 @@ export function Sidebar({ activeView, setActiveView, mobileOpen, onCloseMobile }
                   onClick={() => handleNavClick(item.id)}
                   title={isCollapsed ? item.label : undefined}
                   className={`w-full flex items-center ${
-                    isCollapsed ? 'justify-center px-0' : 'space-x-3 px-2.5'
-                  } py-2 rounded-xl text-[12.5px] font-medium transition-all cursor-pointer ${
+                    isCollapsed ? 'justify-center px-0' : 'space-x-2.5 px-2.5'
+                  } py-1.5 rounded-xl text-[12px] font-medium transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-white/10 text-white font-semibold'
+                      ? 'bg-white/10 text-white font-semibold shadow-2xs'
                       : 'text-[#8E8D93] hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <Icon
-                    size={17}
+                    size={16}
                     strokeWidth={isActive ? 2.2 : 1.8}
                     className={isActive ? 'text-white' : 'text-[#8E8D93]'}
                   />
@@ -161,14 +227,14 @@ export function Sidebar({ activeView, setActiveView, mobileOpen, onCloseMobile }
         </div>
       </div>
 
-      {/* Log out at bottom */}
-      <div className="pt-2">
+      {/* Log out at bottom (Pinned) */}
+      <div className="pt-2 border-t border-white/5 shrink-0">
         <button
           onClick={() => setShowLogoutModal(true)}
           title={isCollapsed ? 'Log out' : undefined}
           className={`w-full flex items-center ${
             isCollapsed ? 'justify-center px-0' : 'space-x-3 px-2.5'
-          } py-2 rounded-xl text-[12.5px] font-medium text-[#8E8D93] hover:text-rose-400 hover:bg-white/5 transition-colors cursor-pointer`}
+          } py-2 rounded-xl text-[12px] font-medium text-[#8E8D93] hover:text-rose-400 hover:bg-white/5 transition-colors cursor-pointer`}
         >
           <LogOut size={16} strokeWidth={1.8} />
           {!isCollapsed && <span>Log out</span>}

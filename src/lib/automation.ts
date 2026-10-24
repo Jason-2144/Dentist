@@ -46,6 +46,8 @@ export async function runJob(job: string): Promise<{ ok: boolean; message: strin
   return { ok: true, message: detail };
 }
 
+export const triggerAgentRun = runJob;
+
 /**
  * Uploads a parsed patient list to the automation service or local storage.
  */

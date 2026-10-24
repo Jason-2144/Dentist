@@ -9,6 +9,7 @@ import { MessagesView } from './components/views/MessagesView';
 import { CallLogsView } from './components/views/CallLogsView';
 import { ClaimsView } from './components/views/ClaimsView';
 import { ReputationView } from './components/views/ReputationView';
+import { AgentDetailView } from './components/views/AgentDetailView';
 import { BookOpen, Bookmark, FileText, Settings as SettingsIcon } from 'lucide-react';
 
 export default function App() {
@@ -40,6 +41,20 @@ export default function App() {
         return <ReputationView />;
       case 'messages':
         return <MessagesView />;
+      case 'agent-receptionist':
+      case 'agent-reengagement':
+      case 'agent-noshow':
+      case 'agent-analytics':
+      case 'agent-treatment':
+      case 'agent-reputation':
+      case 'agent-booking':
+      case 'agent-insurance':
+        return (
+          <AgentDetailView
+            agentId={activeView}
+            onNavigate={(view) => setActiveView(view)}
+          />
+        );
       case 'education':
         return (
           <div className="bg-[#FAF5EE] rounded-[28px] border border-[#E9DDD0] p-8 max-w-4xl space-y-4">
